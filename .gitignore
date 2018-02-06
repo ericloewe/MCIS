@@ -1,0 +1,8 @@
+MCISinput.csv
+MCISoutput.csv
+MCIS_config.o
+MCIS_fileio.o
+MCIS_MDA.o
+MCIStest
+MCIStest.o
+discreteMath.o
