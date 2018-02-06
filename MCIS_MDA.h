@@ -1,0 +1,148 @@
+#pragma once
+
+#include <vector>
+#include "discreteMath.h"
+#include "MCIS_config.h"
+
+#define gravity 9.81
+
+/*
+ * Forward declarations
+ */
+
+//General Motion Drive Algorithm class
+class MCIS_MDA;
+// Offset linear accelerations calculator class
+class CGoffset;
+//MB orientation high-pass filtering class
+class angHPchannel;
+//Tilt coordination channel class
+class tiltCoordination;
+//MB position high-pass filtering class
+class posHPchannel;
+
+/*
+//2nd order filter bank parameters class
+//OBSOLETE
+class params2ndOrderFilt
+{
+    public:
+
+    std::vector<double> xNum, xDen;
+    std::vector<double> yNum, yDen;
+    std::vector<double> zNum, zDen;
+
+    double gain;
+};*/
+
+//Rotate frame of reference from body to inertial axes
+void body2inert(MCISvector& vec, const MCISvector& eulerAngles);
+
+
+
+/*
+ *  Angular High-Pass channel class
+ * 
+ * This class implements a self-contained Angular High-Pass channel
+ */
+class angHPchannel
+{
+    private:
+    discreteFilt2ndOrder rollFilt, pitchFilt, yawFilt;
+    saturation rollSat, pitchSat, yawSat;
+    double rollFiltK, pitchFiltK, yawFiltK; //Gains applied after the biquad sections
+
+    MCISvector lastOutput;
+
+    public:
+    //Constructor
+    angHPchannel(const MCISconfig& config);
+
+
+    MCISvector nextSample(MCISvector& input);
+
+    //Not implemented, reserved for future use
+    void setFilterParameters(const MCISconfig& config);
+};
+
+/*
+ *  Specific Force High-Pass channel class
+ * 
+ * This class implements a self-contained Specific Force High-Pass channel
+ */
+class posHPchannel
+{
+    private:
+    discreteFilt2ndOrder xFilt1, yFilt1, zFilt1; //We need two biquad sections
+    discreteFilt2ndOrder xFilt2, yFilt2, zFilt2; //per filter for Specific Force
+    double xFiltK, yFiltK, zFiltK;  //Gains applied after the biquad sections
+    saturation xSat, ySat, zSat;
+
+    double zGravSub;    //Value to subtract from the z-axis, corresponds to
+                        //g*K_SF_z and is set in constructor
+
+    public:
+    //Constructor
+    posHPchannel(const MCISconfig& config);
+
+
+    MCISvector nextSample(MCISvector& input, const MCISvector& MBangles);
+
+    //Not implemented, reserved for future use
+    void setFilterParameters(const MCISconfig& config);
+};
+
+/*
+ *  Tilt coordination channel class
+ * 
+ * This class implements a self-contained Tilt Coordination channel
+ */
+class tiltCoordination
+{
+    private:
+    discreteFilt2ndOrder xFilt, yFilt;
+    double xFiltK, yFiltK; //Gains applied after the biquad sections
+    saturation xSat, ySat;
+    rateLimit xRatelim, yRatelim;
+    double xGain, yGain;
+
+    public:
+    //Constructor
+    tiltCoordination(const MCISconfig& config);
+
+
+    MCISvector nextSample(MCISvector& input, const MCISvector& MBangles);
+
+    //Not implemented, reserved for future use
+    void setFilterParameters(const MCISconfig& config);
+};
+
+/*
+ *  MCIS MDA class
+ * 
+ * This class implements a single object that provides the full MCIS algorithm.
+ * 
+ * MDA stands for Motion Drive Algorithm
+ */
+class MCIS_MDA
+{
+    private:
+
+    angHPchannel        angleBlock;
+    tiltCoordination    tiltBlock;
+    posHPchannel        posBlock;
+
+    MCISvector posOut, angleOut, angleNoTCout;
+    MCISvector accInput, angInput;
+
+    double kX, kY, kZ, kp, kq, kr;
+
+    public:
+
+    MCIS_MDA(const MCISconfig& config);
+
+    void nextSample(const MCISvector& accelerations, const MCISvector& angularVelocities);
+    MCISvector& getPos();
+    MCISvector& getangle();
+    MCISvector& getAngleNoTC();
+};
