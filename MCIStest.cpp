@@ -13,6 +13,10 @@
 #define inFilename "MCISinput.csv"
 #define outFilename "MCISoutput.csv"
 
+#define testFolder "./testinputs/"
+#define testLen 9
+#define testStart 1
+
 
 int main ()
 {
@@ -40,7 +44,7 @@ int main ()
 
     std::cout << "Configuration loaded." << std::endl;
 
-    inputFile.open(inFilename);
+    /*inputFile.open(inFilename);
     outputFile.open(outFilename);
 
     if (inputFile.good() && outputFile.good())
@@ -59,19 +63,53 @@ int main ()
             std::cout << outFilename;
         }
         return 0;
-    }
+    }*/
         
 
-    MCIS_MDA mda{config};
+    std::string path;
+    std::ifstream infile;
+    std::ofstream outfile;
 
-    MCISvector sfIn, angIn, posOut, angOut;
-
-    while (readMCISinputs(inputFile, sfIn, angIn))
+    for (int i = 1; i <= testLen; i++)
     {
-        mda.nextSample(sfIn, angIn);
-        writeMCISfullOutputs(outputFile, mda.getPos(), mda.getangle(), mda.getAngleNoTC());
-        outputFile << std::endl;
+        path = testFolder;
+        path += "test";
+        path += std::to_string(i);
+        path += ".csv";
+        std::cout << "Opening file "<< path << "  ... ";
+
+        infile.open(path);
+        if (!infile.good())
+        {
+            std::cout << "Failed!" << std::endl;
+        }
+        else
+        {
+            std::cout << "Succeeded!" << std::endl;
+
+            path = testFolder;
+            path += "test";
+            path += std::to_string(i);
+            path += "out";
+            path += ".csv";
+            outfile.open(path);
+
+            MCIS_MDA mda{config};
+
+            MCISvector sfIn, angIn, posOut, angOut;
+
+            while (readMCISinputs(infile, sfIn, angIn))
+            {
+                mda.nextSample(sfIn, angIn);
+                writeMCISfullOutputs(outfile, mda.getPos(), mda.getangle(), mda.getAngleNoTC());
+                outfile << std::endl;
+            }
+        }
+        infile.close();
+        outfile.close();
     }
+
+    
 
     /*while (inputFile.good())
     {
