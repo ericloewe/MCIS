@@ -6,3 +6,6 @@ MCIS_MDA.o
 MCIStest
 MCIStest.o
 discreteMath.o
+MCIStest.o
+MCIS_fileio.o
+MCIStest
