@@ -72,8 +72,25 @@ bool readMCISinputs(std::istream& infile, MCISvector& accIn, MCISvector& angIn)
  * 
  * Writes a set of six doubles from the MCIS output
  * X,Y,Z position, roll, pitch, yaw
+ * 
  */
 void writeMCISoutputs(std::ostream& outfile, 
+                    const MCISvector& accIn, 
+                    const MCISvector& angIn)
+{
+    writeBaseMCISoutputs(outfile, accIn, angIn);
+    outfile << std::endl;
+}
+
+/*
+ *  writeBaseMCISoutputs
+ * 
+ * Writes a set of six doubles from the MCIS output
+ * X,Y,Z position, roll, pitch, yaw
+ * 
+ * Actual heavy lifting goes here
+ */
+void writeBaseMCISoutputs(std::ostream& outfile, 
                     const MCISvector& accIn, 
                     const MCISvector& angIn)
 {
@@ -92,6 +109,7 @@ void writeMCISfullOutputs(std::ostream& outfile,
                         const MCISvector& angIn,
                         const MCISvector& noTCin)
 {
-    writeMCISoutputs(outfile, accIn, angIn);
+    writeBaseMCISoutputs(outfile, accIn, angIn);
     outfile << ',' << noTCin.getVal(0) << ',' << noTCin.getVal(1) << ',' << noTCin.getVal(2);
+    outfile << std::endl;
 }
