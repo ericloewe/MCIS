@@ -41,6 +41,7 @@
         "cstring": "cpp",
         "atomic": "cpp",
         "codecvt": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "cassert": "cpp"
     }
 }
