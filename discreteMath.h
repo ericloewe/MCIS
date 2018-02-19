@@ -6,6 +6,8 @@
 #include <iostream> 
 #include "MCIS_config.h"
 
+#define gravity 9.81
+
 
 /*
  * The discreteFilt class implemets a discrete-time, 2nd order direct form II filter.

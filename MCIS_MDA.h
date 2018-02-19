@@ -4,7 +4,7 @@
 #include "discreteMath.h"
 #include "MCIS_config.h"
 
-#define gravity 9.81
+//#define gravity 9.81
 
 /*
  * Forward declarations

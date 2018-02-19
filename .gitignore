@@ -9,3 +9,14 @@ discreteMath.o
 MCIStest.o
 MCIS_fileio.o
 MCIStest
+nettest.o
+MCIStest.o
+MCIS_xplane_sock.o
+discreteMath.o
+MCIS_fileio.o
+MCIS_MDA.o
+nettest.csv
+nettestinputs.csv
+timetest
+nettest
+core
