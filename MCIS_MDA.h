@@ -86,7 +86,7 @@ class angHPchannel
     angHPchannel(const MCISconfig& config);
 
 
-    MCISvector nextSample(MCISvector& input);
+    MCISvector nextSample(const MCISvector& input);
 
     //Not implemented, reserved for future use
     void setFilterParameters(const MCISconfig& config);
@@ -113,7 +113,7 @@ class posHPchannel
     posHPchannel(const MCISconfig& config);
 
 
-    MCISvector nextSample(MCISvector& input, const MCISvector& MBangles);
+    MCISvector nextSample(const MCISvector& input, const MCISvector& MBangles);
 
     //Not implemented, reserved for future use
     void setFilterParameters(const MCISconfig& config);
@@ -138,7 +138,7 @@ class tiltCoordination
     tiltCoordination(const MCISconfig& config);
 
 
-    MCISvector nextSample(MCISvector& input, const MCISvector& MBangles);
+    MCISvector nextSample(const MCISvector& input, const MCISvector& MBangles);
 
     //Not implemented, reserved for future use
     void setFilterParameters(const MCISconfig& config);

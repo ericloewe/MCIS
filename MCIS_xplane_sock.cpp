@@ -50,7 +50,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * It also spawns the thread that will actually receive stuff
  */
-xplaneSocket::xplaneSocket(int localPort, xplaneMsgType msgType)
+xplaneSocket::xplaneSocket(uint16_t localPort, xplaneMsgType msgType)
 {
     //Boilerplate socket setup
     sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -116,7 +116,9 @@ void xplaneSocket::recvThreadFunc()
 
     while (continueRecv)
     {
-        receivedBytes = recvfrom(sock_fd, (void *)&rawMsg, XP9_MSG_SIZE,
+        //The cast is to silence -Wconversion. We are NEVER going to receive
+        //more than 2^32 bytes at once.
+        receivedBytes = (int)recvfrom(sock_fd, (void *)&rawMsg, XP9_MSG_SIZE,
                                    0, (sockaddr*)&recvAddr, &recvAddrSize);
         
         if (receivedBytes == -1)

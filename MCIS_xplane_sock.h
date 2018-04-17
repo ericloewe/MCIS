@@ -168,7 +168,7 @@ class xplaneSocket
 
     public:
 
-    xplaneSocket(int localPort, xplaneMsgType msgType);
+    xplaneSocket(uint16_t localPort, xplaneMsgType msgType);
     ~xplaneSocket();
 
     

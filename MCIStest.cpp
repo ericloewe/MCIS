@@ -41,7 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define inFilename "MCISinput.csv"
 #define outFilename "MCISoutput.csv"
 
-#define testFolder "./testinputs/"
+#define testFolder "./testinputs2/"
 #define testLen 9
 #define testStart 1
 

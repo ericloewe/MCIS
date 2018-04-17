@@ -1,6 +1,6 @@
 CC = g++
 STDFLAG = -std=c++11
-CFLAGS = -g -c -Wall -pedantic
+CFLAGS = -g -c -Wall -Wconversion -Wextra -pedantic
 LINKFLAGS = -pthread 
 
 default: MCIStest nettest

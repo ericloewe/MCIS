@@ -25,7 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 */
 
-
+#include <iostream>
 #include <vector>
 #include <stdexcept>
 #include "MCIS_MDA.h"
@@ -202,15 +202,18 @@ angHPchannel::angHPchannel(const MCISconfig& config)
  * 5) Filter output gets reassembled into an MCISvector and is returned
  *      and stored for the next iteration.
  */
-MCISvector angHPchannel::nextSample(MCISvector& input)
+MCISvector angHPchannel::nextSample(const MCISvector& input)
 {
+    //Copy the input vector so that we can operate on it safely
+    MCISvector omega = input;
+    
     // 1) Rotate input's frame of reference from body to inertial
-    body2inert(input, lastOutput);
+    body2inert(omega, lastOutput);
 
     // 2) Split up the vector
-    double pChannel = input.getVal(0);
-    double qChannel = input.getVal(1);
-    double rChannel = input.getVal(2);
+    double pChannel = omega.getVal(0);
+    double qChannel = omega.getVal(1);
+    double rChannel = omega.getVal(2);
 
     // 3) Run the inputs through the saturations
     pChannel = rollSat.nextSample(pChannel);
@@ -267,15 +270,18 @@ posHPchannel::posHPchannel(const MCISconfig& config)
  *      the respective filter (which includes the integrator)
  * 6) Filter output gets reassembled into an MCISvector
  */
-MCISvector posHPchannel::nextSample(MCISvector& input, const MCISvector& MBangles)
+MCISvector posHPchannel::nextSample(const MCISvector& input, const MCISvector& MBangles)
 {
+    //Copy the input vector so that we can operate on it safely
+    MCISvector sf = input;
+
     // 1) Rotate input's frame of reference from body to inertial
-    body2inert(input, MBangles);
+    body2inert(sf, MBangles);
 
     // 2) Split up the vector
-    double xChannel = input.getVal(0);
-    double yChannel = input.getVal(1);
-    double zChannel = input.getVal(2);
+    double xChannel = sf.getVal(0);
+    double yChannel = sf.getVal(1);
+    double zChannel = sf.getVal(2);
 
     // 3) Subtract gravity in the Z-axis
     zChannel -= zGravSub;
@@ -316,8 +322,8 @@ tiltCoordination::tiltCoordination(const MCISconfig& config)
         yFiltK{config.filt_SF_LP_y_disc.biquads[0].gain},
         xSat{config.lim_TC_x, 0},
         ySat{config.lim_TC_y, 0},
-        xRatelim{config.ratelim_TC_x, 0},
-        yRatelim{config.ratelim_TC_y, 0},
+        xRatelim{config.ratelim_TC_x / config.sampleRate, 0},
+        yRatelim{config.ratelim_TC_y / config.sampleRate, 0},
         xGain{config.K_TC_x},
         yGain{config.K_TC_y}
 {}
@@ -342,14 +348,17 @@ tiltCoordination::tiltCoordination(const MCISconfig& config)
  *      z acceleration has no tilt coordination
  * 8) This vector is summed with the MBangles input and returned.
  */
-MCISvector tiltCoordination::nextSample(MCISvector& input, const MCISvector& MBangles)
+MCISvector tiltCoordination::nextSample(const MCISvector& input, const MCISvector& MBangles)
 {
+    //Copy the input vector so that we can operate on it safely
+    MCISvector sf = input;
+    
     // 1) Rotate input's frame of reference from body to inertial
-    body2inert(input, MBangles);
+    body2inert(sf, MBangles);
 
     // 2) Split up the vector
-    double xChannel = input.getVal(0);
-    double yChannel = input.getVal(1);
+    double xChannel = sf.getVal(0);
+    double yChannel = sf.getVal(1);
 
     // 3) Apply saturation
     xChannel = xSat.nextSample(xChannel);

@@ -618,7 +618,8 @@ MCISvector MCISvector::crossProduct(const MCISvector& aVector, const MCISvector&
 
     MCISvector resOut(result);
 
-    return std::move(resOut);
+    //return std::move(resOut);
+    return resOut;
 }
 
 /*
@@ -1176,9 +1177,26 @@ rateLimit::rateLimit(double limSetting, double initOutput) : saturation(limSetti
  */
 double rateLimit::nextSample(double input)
 {
-    double inputRate = input - output;
+    double inputRate = input - output; //x(n) - x(n-1)
+    double absRate = fabs(inputRate);
+
+    if (absRate > limit)
+    {
+        if (inputRate < 0)
+        {
+            output -= limit;
+        }
+        else
+        {
+            output += limit;
+        }
+    }
+    else
+    {
+        output = input;
+    }
     
-    if (abs(inputRate) > limit && inputRate < 0)
+    /*if (abs(inputRate) > limit && inputRate < 0)
     {
         output -= limit;
     }
@@ -1189,7 +1207,7 @@ double rateLimit::nextSample(double input)
     else
     {
         output = input;
-    }
+    }*/
     
     return output;
 }

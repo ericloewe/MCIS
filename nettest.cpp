@@ -93,9 +93,9 @@ int main()
     auto sampleTime = std::chrono::nanoseconds( (int)(1e9 / config.sampleRate));
     //auto sampleTime = std::chrono::microseconds((unsigned long)(10e9));
 
-    std::cout << "std::chrono::duration = " << sampleTime.count() << " ns" << std::endl;
+    /*std::cout << "std::chrono::duration = " << sampleTime.count() << " ns" << std::endl;
     std::cout << "                      = " << sampleTime.count() * 1e-9 << " s" << std::endl;
-    std::cout << "sampleRate = " << config.sampleRate << std::endl;
+    std::cout << "sampleRate = " << config.sampleRate << std::endl;*/
 
     //for (int i = 0; i < 120; i++)
     while (true)
