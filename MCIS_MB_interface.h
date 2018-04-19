@@ -48,6 +48,7 @@ class mbinterface
     private:
     MCISvector curr_pos_out, curr_rot_out;
     MCISvector curr_acceleration_in, curr_ang_velocity_in;
+    const MCISvector init_pos_out{0, 0, 0}, init_rot_out{0, 0, 0};
 
     iface_status current_status;
 
@@ -56,6 +57,7 @@ class mbinterface
 
     int send_ticks = 1;
     int ticks_per_tock = 2;
+    int DOF_mode_ticks = 60;
 
     int recv_sock_fd;
     int send_sock_fd;
@@ -69,8 +71,10 @@ class mbinterface
     bool userEngage = false;
     bool userReady  = false;
     bool userPark   = false;
+    bool userOverride = false;
 
     bool MB_error_asserted = false;
+    uint32_t MB_state_reply = 0;
 
 
     xplaneSocket simSocket;
@@ -100,5 +104,6 @@ class mbinterface
     void setEngage();
     void setReady();
     void setPark();
+    void setOverride();
 
 };

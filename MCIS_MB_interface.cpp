@@ -98,6 +98,11 @@ void mbinterface::setReady()
     }
 }
 
+void mbinterface::setOverride()
+{
+    userOverride = true;
+}
+
 void mbinterface::testsend_mb_command()
 {
     DOFpacket testPacket;
@@ -149,7 +154,7 @@ void mbinterface::send_mb_command(int MCW, MCISvector pos, MCISvector rot)
 
 void mbinterface::mb_send_func()
 {
-    std::cout << "Send thread spawned!";
+    std::cout << "Send thread spawned!" << std::endl;
 
     auto nextTick = std::chrono::high_resolution_clock::now();
     //std::chrono::high_resolution_clock::duration oneSecond(std::chrono::duration<long long>(1));
@@ -160,33 +165,57 @@ void mbinterface::mb_send_func()
     {
         nextTick += sampleTime;
 
-        if (send_ticks == ticks_per_tock)
+        if (send_ticks % ticks_per_tock == 0)
         {
             //Communicate with MB
-                if (!(current_status == ESTABLISH_COMMS || current_status == WAIT_FOR_ENGAGE))
+            if (!(current_status == ESTABLISH_COMMS || current_status == WAIT_FOR_ENGAGE))
             {
-                current_status = PARKING;
+                if (userPark)
+                {
+                    current_status = PARKING;
+                }
+                
             }
 
             switch (current_status)
             {
                 case ESTABLISH_COMMS:
                     mb_send_func_ESTABLISH_COMMS();
+                    if (userOverride)
+                    {
+                        current_status = WAIT_FOR_ENGAGE;
+                    }
                     break;
                 case WAIT_FOR_ENGAGE:
                     mb_send_func_WAIT_FOR_ENGAGE();
+                    if (userOverride)
+                    {
+                        current_status = ENGAGING;
+                    }
                     break;
                 case ENGAGING:
                     mb_send_func_ENGAGING();
+                    if (userOverride)
+                    {
+                        current_status = WAIT_FOR_READY;
+                    }
                     break;
                 case WAIT_FOR_READY:
                     mb_send_func_WAIT_FOR_READY();
+                    if (userOverride)
+                    {
+                        current_status = ENGAGED;
+                    }
                     break;
                 case RATE_LIMITED:
                     mb_send_func_RATE_LIMITED();
                     break;
                 case ENGAGED:
                     mb_send_func_ENGAGED();
+                    if (userOverride)
+                    {
+                        current_status = PARKING;
+                    }
                     break;
                 case PARKING:
                     mb_send_func_PARKING();
@@ -215,6 +244,11 @@ void mbinterface::mb_recv_func()
     {
         recv(recv_sock_fd, (void *)&mb_response, sizeof(mb_response), 0);
 
+        if (mb_response.latched_fault_data)
+        {
+            MB_error_asserted = true;
+        }
+        MB_state_reply = ntohl(mb_response.machine_state_info);
 
     }
 }
@@ -222,40 +256,68 @@ void mbinterface::mb_recv_func()
 
 void mbinterface::mb_send_func_ESTABLISH_COMMS()
 {
+    send_mb_command(MCW_DOF_MODE, init_pos_out, init_rot_out);
 
+    if (MB_state_reply != 0)
+    {
+        std::cout << "Received reply from MB. Engage when ready." << std::endl;
+        //std::cout << "Faults" << 
+        current_status = WAIT_FOR_ENGAGE;
+    }
 }
 
 
 void mbinterface::mb_send_func_WAIT_FOR_ENGAGE()
 {
+    send_mb_command(MCW_NEW_POSITION, init_pos_out, init_rot_out);
 
+    if (userEngage)
+    {
+        std::cout << "Engaging." << std::endl;
+        current_status = ENGAGING;
+        userEngage = false;
+    }
 
 }
 
 void mbinterface::mb_send_func_ENGAGING()
 {
+    send_mb_command(MCW_START, init_pos_out, init_rot_out);
 
+    if (MB_state_reply == MB_STATE_ENGAGED)
+    {
+        std::cout << "MB ready." << std::endl;
+        current_status = WAIT_FOR_READY;
+    }
 }
 
 
 void mbinterface::mb_send_func_WAIT_FOR_READY()
 {
+    send_mb_command(MCW_NEW_POSITION, init_pos_out, init_rot_out);
 
+    if (userReady)
+    {
+        std::cout << "User ready, motion enabled" << std::endl;
+        current_status = ENGAGED;
+        userReady = false;
+    }
 }
 
 
 void mbinterface::mb_send_func_RATE_LIMITED()
 {
-
+    //TODO - ADD THIS ONE
 }
 
 void mbinterface::mb_send_func_ENGAGED()
 {
-
+    send_mb_command(MCW_NEW_POSITION, curr_pos_out, curr_rot_out);
 }
 
 
 void mbinterface::mb_send_func_PARKING()
 {
-
+    send_mb_command(MCW_PARK, init_pos_out, init_rot_out);
+    userPark = false;
 }

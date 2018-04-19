@@ -27,19 +27,66 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include <iostream>
+#include <fstream>
 #include <unistd.h>
 #include "MCIS_MB_interface.h"
 
 #define MB_IP 0x807F3778 //CHANGE ME!
 #define MB_PORT 991    //CHANGE ME!
 #define LOCAL_PORT 992 //CHANGE ME!
+#define XPLANE_RECV_PORT 990 //CHANGE ME!
+#define configFileName "MCISconfig.bin"
 
 int main()
 {
-    mbinterface motion_base(MB_PORT, LOCAL_PORT, MB_IP);
+    MCISconfig config;
+    char *fileIn = (char *)&config;
+    std::ifstream configFile;
+    
+    //TODO - Proper config treatment
+    //Try to open the config file...
+    configFile.open(configFileName, std::ios_base::binary);
+    if (!configFile.good())
+    {
+        std::cout << "Error opening config file " << configFileName << std::endl;
+        return 0;
+    }
+    //And try to read it.
+    configFile.read(fileIn, sizeof(MCISconfig));
+    if (configFile.gcount() != sizeof(MCISconfig))
+    {
+        std::cout << "Config file truncated! Cannot start MCIS using config file " << configFileName << std::endl;
+        return 0;
+    }
+    std::cout << "Configuration loaded." << std::endl;
+
+
+    
+    mbinterface motion_base(MB_PORT, LOCAL_PORT, MB_IP, XPLANE_RECV_PORT, config);
+
+    int consoleInput = 0;
     while(true)
     {
-        sleep(5);
+        std::cout << "1 - Engage     4 - Ready     7 - Override    0 - Park" << std::endl;
+        std::cin >> consoleInput;
+        switch (consoleInput)
+        {
+            case 1:
+                motion_base.setEngage();
+                break;
+            case 4:
+                motion_base.setReady();
+                break;
+            case 7:
+                motion_base.setOverride();
+                break;
+            case 0:
+                motion_base.setPark();
+                break;
+        }
+
+
+
     };
     //The basics are now in place
 }
