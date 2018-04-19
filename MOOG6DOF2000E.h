@@ -34,8 +34,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <cstdint>
 
-
-
+/* MB sample rate in Hz */
+#define MB_SAMPLE_RATE 60
 
 /* Motion Command Word definitions */
 #define MCW_DISABLE         220

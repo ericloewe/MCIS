@@ -35,6 +35,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "MCIS_MDA.h"
+#include "MCIS_xplane_sock.h"
 #include "discreteMath.h"
 #include "MOOG6DOF2000E.h"
 
@@ -44,13 +46,16 @@ enum iface_status   {ESTABLISH_COMMS, WAIT_FOR_ENGAGE, ENGAGING,
 class mbinterface
 {
     private:
-    MCISvector curr_pos_out;
-    MCISvector curr_rot_out;
+    MCISvector curr_pos_out, curr_rot_out;
+    MCISvector curr_acceleration_in, curr_ang_velocity_in;
 
     iface_status current_status;
 
     std::thread MB_recv_thread;
     std::thread MB_send_thread;
+
+    int send_ticks = 1;
+    int ticks_per_tock = 2;
 
     int recv_sock_fd;
     int send_sock_fd;
@@ -60,6 +65,17 @@ class mbinterface
 
     struct sockaddr_in recvAddr;
     struct sockaddr_in sendAddr;
+
+    bool userEngage = false;
+    bool userReady  = false;
+    bool userPark   = false;
+
+    bool MB_error_asserted = false;
+
+
+    xplaneSocket simSocket;
+    MCIS_MDA mda;
+
 
     void mb_recv_func();
     void mb_send_func();
@@ -73,10 +89,16 @@ class mbinterface
     void mb_send_func_PARKING();
 
     void send_mb_command(int MCW, MCISvector pos, MCISvector rot);
+    void testsend_mb_command();
 
 
     public:
-    mbinterface(uint16_t mb_send_port, uint16_t mb_recv_port, uint32_t mb_IP);
-    ~mbinterface();
+    mbinterface(uint16_t mb_send_port, uint16_t mb_recv_port, uint32_t mb_IP,
+                uint16_t xp_recv_port, MCISconfig mdaconfig);
+    //~mbinterface();
+
+    void setEngage();
+    void setReady();
+    void setPark();
 
 };

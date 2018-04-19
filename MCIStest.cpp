@@ -109,10 +109,12 @@ int main (int argc, char **argv)
 
         MCISvector sfIn, angIn, posOut, angOut;
 
+        //while (readMCISinputs(infile, sfIn, angIn))
         while (readMCISinputs(infile, sfIn, angIn))
         {
             mda.nextSample(sfIn, angIn);
             writeMCISfullOutputs(outfile, mda.getPos(), mda.getangle(), mda.getAngleNoTC());
+            //writeMCISfullOutputsBin(outfile, mda.getPos(), mda.getangle(), mda.getAngleNoTC());
         }
 
         std::cout << "done." << std::endl;

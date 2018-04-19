@@ -20,3 +20,6 @@ nettestinputs.csv
 timetest
 nettest
 core
+testinputs2/*
+testinputsbin/*
+*.o

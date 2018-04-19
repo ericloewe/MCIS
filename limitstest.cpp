@@ -517,5 +517,32 @@ int main(void)
     euler.print(std::cout);
     DCM.print(std::cout);
 
+
+    std::cout <<  std::endl << "Testing pqr2Euler." << std::endl << std::endl;
+    MCISmatrix transform{};
+
+    euler.assign(0.5, 0.3, 2);
+    transform.pqr2eulerRates(euler);
+
+    std::cout << "Euler angles [phi, theta, psi]: ";
+    euler.print(std::cout);
+    transform.print(std::cout);
+
+    euler.assign(0.175, 0.087, 0.63);
+    transform.pqr2eulerRates(euler);
+
+    std::cout << "Euler angles [phi, theta, psi]: ";
+    euler.print(std::cout);
+    transform.print(std::cout);
+
+    euler.assign(0.087, 0.005, 0.02);
+    transform.pqr2eulerRates(euler);
+
+    std::cout << "Euler angles [phi, theta, psi]: ";
+    euler.print(std::cout);
+    transform.print(std::cout);
+
+
+
     sleep(5);
 }
