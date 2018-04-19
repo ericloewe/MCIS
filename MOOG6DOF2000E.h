@@ -157,5 +157,31 @@ struct DOFresponse
 };
 
 
+/* Motion Base Limits and offsets */
+#define MB_LIM_HIGH_x   +0.381
+#define MB_LIM_LOW_x    -0.381
+#define MB_OFFSET_x     0.0
+
+#define MB_LIM_HIGH_y   +0.381
+#define MB_LIM_LOW_y    -0.381
+#define MB_OFFSET_y     0.0
+
+#define MB_LIM_HIGH_z   +0.0
+#define MB_LIM_LOW_z    -0.4572
+#define MB_OFFSET_z     -0.2286
+
+#define MB_LIM_HIGH_roll    +0.50605
+#define MB_LIM_LOW_roll     -0.50605
+#define MB_OFFSET_roll      +0.0
+
+#define MB_LIM_HIGH_pitch   +0.57585
+#define MB_LIM_LOW_pitch    -0.57585
+#define MB_OFFSET_pitch     +0.0
+
+#define MB_LIM_HIGH_yaw     +0.50605
+#define MB_LIM_LOW_yaw      -0.50605
+#define MB_OFFSET_yaw       +0.0
+
+
 
 

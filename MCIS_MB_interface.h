@@ -92,8 +92,11 @@ class mbinterface
     void mb_send_func_ENGAGED();
     void mb_send_func_PARKING();
 
-    void send_mb_command(int MCW, MCISvector pos, MCISvector rot);
+    void send_mb_command(int MCW, MCISvector& pos, MCISvector& rot);
+    void send_mb_neutral_command(int MCW);
     void testsend_mb_command();
+
+    static void output_limiter(MCISvector pos, MCISvector rot);
 
 
     public:

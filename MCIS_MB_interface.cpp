@@ -28,6 +28,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cassert>
 #include <chrono>
 #include <iostream>
+#include <type_traits>
+#include "MOOG6DOF2000E.h"
 #include "MCIS_MB_interface.h"
 #include "MCIS_util.h"
 
@@ -115,7 +117,8 @@ void mbinterface::testsend_mb_command()
     testPacket.lateral_cmd  = 0;
     testPacket.heave_cmd    = 0;
 
-    assert(sizeof(testPacket) == 32);
+    static_assert(sizeof(testPacket) == 32, 
+                "DOF packet structure does not match the correct size (probably due to padding)");
 
     int bytes = sendto(send_sock_fd, (void*)&testPacket, sizeof(testPacket), 0, 
                         (sockaddr *)&sendAddr, sizeof(sendAddr));
@@ -127,11 +130,15 @@ void mbinterface::testsend_mb_command()
 }
 
 
-void mbinterface::send_mb_command(int MCW, MCISvector pos, MCISvector rot)
+void mbinterface::send_mb_command(int MCW, MCISvector& pos, MCISvector& rot)
 {
     DOFpacket packet;
 
     packet.MCW = htonl(MCW);
+
+    /*Clamp outputs down and offset them if needed (z)*/
+    output_limiter(pos, rot);
+
 
     packet.surge_cmd    = floatHostToNet((float)pos.getVal(0));
     packet.lateral_cmd  = floatHostToNet((float)pos.getVal(1));
@@ -141,7 +148,33 @@ void mbinterface::send_mb_command(int MCW, MCISvector pos, MCISvector rot)
     packet.pitch_cmd    = floatHostToNet((float)rot.getVal(1));
     packet.yaw_cmd      = floatHostToNet((float)rot.getVal(2));
 
-    assert(sizeof(packet) == 32);
+    static_assert(sizeof(packet) == 32, 
+                "DOF packet structure does not match the correct size (probably due to padding)");
+
+    int bytes = sendto(send_sock_fd, (void*)&packet, sizeof(packet), 0, 
+                        (sockaddr *)&sendAddr, sizeof(sendAddr));
+    if (bytes != sizeof(packet))
+    {
+        std::cout << "Error sending! Sent " << bytes << std::endl;
+    }
+}
+
+void mbinterface::send_mb_neutral_command(int MCW)
+{
+    DOFpacket packet;
+
+    packet.MCW = htonl(MCW);
+
+    packet.surge_cmd    = floatHostToNet((float)init_pos_out.getVal(0));
+    packet.lateral_cmd  = floatHostToNet((float)init_pos_out.getVal(1));
+    packet.heave_cmd    = floatHostToNet((float)init_pos_out.getVal(2));
+
+    packet.roll_cmd     = floatHostToNet((float)init_rot_out.getVal(0));
+    packet.pitch_cmd    = floatHostToNet((float)init_rot_out.getVal(1));
+    packet.yaw_cmd      = floatHostToNet((float)init_rot_out.getVal(2));
+
+    static_assert(sizeof(packet) == 32, 
+                "DOF packet structure does not match the correct size (probably due to padding)");
 
     int bytes = sendto(send_sock_fd, (void*)&packet, sizeof(packet), 0, 
                         (sockaddr *)&sendAddr, sizeof(sendAddr));
@@ -184,6 +217,7 @@ void mbinterface::mb_send_func()
                     if (userOverride)
                     {
                         current_status = WAIT_FOR_ENGAGE;
+                        userOverride = false;
                     }
                     break;
                 case WAIT_FOR_ENGAGE:
@@ -191,6 +225,7 @@ void mbinterface::mb_send_func()
                     if (userOverride)
                     {
                         current_status = ENGAGING;
+                        userOverride = false;
                     }
                     break;
                 case ENGAGING:
@@ -198,6 +233,7 @@ void mbinterface::mb_send_func()
                     if (userOverride)
                     {
                         current_status = WAIT_FOR_READY;
+                        userOverride = false;
                     }
                     break;
                 case WAIT_FOR_READY:
@@ -205,6 +241,7 @@ void mbinterface::mb_send_func()
                     if (userOverride)
                     {
                         current_status = ENGAGED;
+                        userOverride = false;
                     }
                     break;
                 case RATE_LIMITED:
@@ -215,6 +252,7 @@ void mbinterface::mb_send_func()
                     if (userOverride)
                     {
                         current_status = PARKING;
+                        userOverride = false;
                     }
                     break;
                 case PARKING:
@@ -238,7 +276,8 @@ void mbinterface::mb_send_func()
 void mbinterface::mb_recv_func()
 {
     DOFresponse mb_response;
-    assert(sizeof(DOFresponse) == 40);
+    static_assert(sizeof(DOFresponse) == 40, 
+                "DOF response structure does not match the correct size (probably due to padding)");
     
     while(true)
     {
@@ -256,7 +295,7 @@ void mbinterface::mb_recv_func()
 
 void mbinterface::mb_send_func_ESTABLISH_COMMS()
 {
-    send_mb_command(MCW_DOF_MODE, init_pos_out, init_rot_out);
+    send_mb_neutral_command(MCW_DOF_MODE);
 
     if (MB_state_reply != 0)
     {
@@ -269,7 +308,7 @@ void mbinterface::mb_send_func_ESTABLISH_COMMS()
 
 void mbinterface::mb_send_func_WAIT_FOR_ENGAGE()
 {
-    send_mb_command(MCW_NEW_POSITION, init_pos_out, init_rot_out);
+    send_mb_neutral_command(MCW_NEW_POSITION);
 
     if (userEngage)
     {
@@ -282,7 +321,7 @@ void mbinterface::mb_send_func_WAIT_FOR_ENGAGE()
 
 void mbinterface::mb_send_func_ENGAGING()
 {
-    send_mb_command(MCW_START, init_pos_out, init_rot_out);
+    send_mb_neutral_command(MCW_START);
 
     if (MB_state_reply == MB_STATE_ENGAGED)
     {
@@ -294,7 +333,7 @@ void mbinterface::mb_send_func_ENGAGING()
 
 void mbinterface::mb_send_func_WAIT_FOR_READY()
 {
-    send_mb_command(MCW_NEW_POSITION, init_pos_out, init_rot_out);
+    send_mb_neutral_command(MCW_NEW_POSITION);
 
     if (userReady)
     {
@@ -318,6 +357,77 @@ void mbinterface::mb_send_func_ENGAGED()
 
 void mbinterface::mb_send_func_PARKING()
 {
-    send_mb_command(MCW_PARK, init_pos_out, init_rot_out);
+    send_mb_neutral_command(MCW_PARK);
     userPark = false;
+}
+
+void mbinterface::output_limiter(MCISvector pos, MCISvector rot)
+{
+    /* Offset values that need to be offset */
+    //This means only the z-position
+    pos.setVal(2, pos.getVal(2) + MB_OFFSET_z);
+    //Other values do not need offsetting.
+    //Newer versions of the 6DOF2000E software do not require offsets at all
+
+    /* Clamp values down to acceptable ranges */
+    //x-position
+    if (pos.getVal(0) < MB_LIM_LOW_x)
+    {
+        pos.setVal(0, MB_LIM_LOW_x);
+    }
+    else if (pos.getVal(0) > MB_LIM_HIGH_x)
+    {
+        pos.setVal(0, MB_LIM_HIGH_x);
+    }
+
+    //y-position
+    if (pos.getVal(1) < MB_LIM_LOW_y)
+    {
+        pos.setVal(1, MB_LIM_LOW_y);
+    }
+    else if (pos.getVal(1) > MB_LIM_HIGH_y)
+    {
+        pos.setVal(1, MB_LIM_HIGH_y);
+    }
+
+    //z-position
+    if (pos.getVal(2) < MB_LIM_LOW_z)
+    {
+        pos.setVal(2, MB_LIM_LOW_z);
+    }
+    else if (pos.getVal(2) > MB_LIM_HIGH_z)
+    {
+        pos.setVal(2, MB_LIM_HIGH_z);
+    }
+
+    //Roll
+    if (rot.getVal(0) < MB_LIM_LOW_roll)
+    {
+        rot.setVal(0, MB_LIM_LOW_roll);
+    }
+    else if (rot.getVal(0) > MB_LIM_HIGH_roll)
+    {
+        rot.setVal(0, MB_LIM_HIGH_roll);
+    }
+
+    //Pitch
+    if (rot.getVal(1) < MB_LIM_LOW_pitch)
+    {
+        rot.setVal(1, MB_LIM_LOW_pitch);
+    }
+    else if (rot.getVal(1) > MB_LIM_HIGH_pitch)
+    {
+        rot.setVal(1, MB_LIM_HIGH_pitch);
+    }
+
+    //Yaw
+    if (rot.getVal(2) < MB_LIM_LOW_yaw)
+    {
+        rot.setVal(2, MB_LIM_LOW_yaw);
+    }
+    else if (rot.getVal(2) > MB_LIM_HIGH_yaw)
+    {
+        rot.setVal(2, MB_LIM_HIGH_yaw);
+    }
+
 }

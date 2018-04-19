@@ -3,15 +3,26 @@ STDFLAG = -std=c++11
 CFLAGS = -g -c -Wall -Wconversion -Wextra -pedantic
 LINKFLAGS = -pthread 
 
-default: MCIStest nettest
+default: MCIStest nettest mbtest
 build-default: MCIStest
 
 MCIStest :  MCIS_config.o MCIS_fileio.o discreteMath.o MCIS_MDA.o MCIStest.o
-	$(CC) $(LINKFLAGS)  MCIS_config.o MCIS_fileio.o discreteMath.o MCIS_MDA.o MCIStest.o -o MCIStest
+	$(CC) $(LINKFLAGS)  MCIS_config.o MCIS_fileio.o discreteMath.o MCIS_MDA.o \
+	MCIStest.o -o MCIStest
 
-nettest :  MCIS_config.o MCIS_fileio.o discreteMath.o MCIS_MDA.o MCIS_xplane_sock.o nettest.o
-	$(CC) $(LINKFLAGS)  MCIS_config.o MCIS_fileio.o discreteMath.o MCIS_MDA.o MCIS_xplane_sock.o nettest.o -o nettest
+nettest :  MCIS_config.o MCIS_fileio.o discreteMath.o MCIS_MDA.o MCIS_xplane_sock.o \
+nettest.o
+	$(CC) $(LINKFLAGS)  MCIS_config.o MCIS_fileio.o discreteMath.o MCIS_MDA.o \
+	MCIS_xplane_sock.o nettest.o -o nettest
     
+mbtest : MCIS_config.o MCIS_fileio.o discreteMath.o MCIS_MDA.o MCIS_xplane_sock.o \
+MCIS_MB_interface.o  mbtest.o
+	$(CC) $(LINKFLAGS)  MCIS_config.o MCIS_fileio.o discreteMath.o MCIS_MDA.o \
+	MCIS_xplane_sock.o MCIS_MB_interface.o  mbtest.o -o mbtest
+
+mbtest.o : *.h mbtest.cpp
+	$(CC) $(STDFLAG) $(CFLAGS) mbtest.cpp -o mbtest.o
+
 MCIStest.o : MCIS_config.h discreteMath.h MCIS_fileio.h MCIStest.cpp 
 	$(CC) $(STDFLAG) $(CFLAGS) MCIStest.cpp -o MCIStest.o
 
@@ -32,6 +43,10 @@ MCIS_MDA.o : discreteMath.h MCIS_config.h MCIS_MDA.h MCIS_MDA.cpp
 
 MCIS_xplane_sock.o : discreteMath.h MCIS_xplane_sock.h MCIS_config.h MCIS_xplane_sock.cpp 
 	$(CC) $(STDFLAG) $(CFLAGS) MCIS_xplane_sock.cpp -o MCIS_xplane_sock.o
+
+MCIS_MB_interface.o : *.h MCIS_MB_interface.cpp
+	$(CC) $(STDFLAG) $(CFLAGS) MCIS_MB_interface.cpp -o MCIS_MB_interface.o
+
     
 
     

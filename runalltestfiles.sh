@@ -1,5 +1,5 @@
 #!/bin/sh
 
-for filename in testinputs2/*; do
+for filename in testinputs5/*; do
     ./MCIStest $filename;
     done
