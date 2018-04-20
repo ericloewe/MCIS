@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <chrono>
 #include <iostream>
 #include <type_traits>
+#include <unistd.h>
 #include "MOOG6DOF2000E.h"
 #include "MCIS_MB_interface.h"
 #include "MCIS_util.h"
@@ -39,15 +40,14 @@ mbinterface::mbinterface(uint16_t mb_send_port, uint16_t mb_recv_port,
                          simSocket{xp_recv_port, XP9},
                          mda{mdaconfig}
 {
-    recv_sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    //recv_sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
     send_sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
 
-    if (recv_sock_fd < 1 || send_sock_fd < 1)
+    /*if (recv_sock_fd < 1 || send_sock_fd < 1)
     {
         std::runtime_error sock_open_failed_exception("Could not open MB sockets!\n");
         throw sock_open_failed_exception;
     }
-
     //Bind recv socket
     recvAddr.sin_family = AF_INET;
     recvAddr.sin_addr.s_addr = INADDR_ANY;
@@ -56,7 +56,8 @@ mbinterface::mbinterface(uint16_t mb_send_port, uint16_t mb_recv_port,
     {
         std::runtime_error invalid_sock_fd_exception("Failed to bind socket to INADDR_ANY!\n");
         throw invalid_sock_fd_exception;
-    }
+    }*/
+
 
     //Send socket addressing
     sendAddr.sin_family = AF_INET;
@@ -120,7 +121,7 @@ void mbinterface::testsend_mb_command()
     static_assert(sizeof(testPacket) == 32, 
                 "DOF packet structure does not match the correct size (probably due to padding)");
 
-    int bytes = sendto(send_sock_fd, (void*)&testPacket, sizeof(testPacket), 0, 
+    long int bytes = sendto(send_sock_fd, (void*)&testPacket, sizeof(testPacket), 0, 
                         (sockaddr *)&sendAddr, sizeof(sendAddr));
     if (bytes != sizeof(testPacket))
     {
@@ -137,7 +138,7 @@ void mbinterface::send_mb_command(int MCW, MCISvector& pos, MCISvector& rot)
     packet.MCW = htonl(MCW);
 
     /*Clamp outputs down and offset them if needed (z)*/
-    output_limiter(pos, rot);
+    //output_limiter(pos, rot);
 
 
     packet.surge_cmd    = floatHostToNet((float)pos.getVal(0));
@@ -151,7 +152,7 @@ void mbinterface::send_mb_command(int MCW, MCISvector& pos, MCISvector& rot)
     static_assert(sizeof(packet) == 32, 
                 "DOF packet structure does not match the correct size (probably due to padding)");
 
-    int bytes = sendto(send_sock_fd, (void*)&packet, sizeof(packet), 0, 
+    long int bytes = sendto(send_sock_fd, (void*)&packet, sizeof(packet), 0, 
                         (sockaddr *)&sendAddr, sizeof(sendAddr));
     if (bytes != sizeof(packet))
     {
@@ -176,7 +177,7 @@ void mbinterface::send_mb_neutral_command(int MCW)
     static_assert(sizeof(packet) == 32, 
                 "DOF packet structure does not match the correct size (probably due to padding)");
 
-    int bytes = sendto(send_sock_fd, (void*)&packet, sizeof(packet), 0, 
+    long int bytes = sendto(send_sock_fd, (void*)&packet, sizeof(packet), 0, 
                         (sockaddr *)&sendAddr, sizeof(sendAddr));
     if (bytes != sizeof(packet))
     {
@@ -193,6 +194,9 @@ void mbinterface::mb_send_func()
     //std::chrono::high_resolution_clock::duration oneSecond(std::chrono::duration<long long>(1));
     auto sampleTime = std::chrono::nanoseconds( (int)(1e9 / 120));
     //auto sampleTime = std::chrono::microseconds((unsigned long)(10e9));
+
+    send_mb_neutral_command(MCW_DOF_MODE);
+    sock_bound = true;
 
     while (true)
     {
@@ -260,11 +264,33 @@ void mbinterface::mb_send_func()
                     break;
             }
         }
-        
+
         simSocket.getData(curr_acceleration_in, curr_ang_velocity_in);
         mda.nextSample(curr_acceleration_in, curr_ang_velocity_in);
         curr_pos_out = mda.getPos();
         curr_rot_out = mda.getangle();
+
+        /*Clamp outputs down and offset them if needed (z)*/
+        output_limiter(curr_pos_out, curr_rot_out);
+
+        if (send_ticks % 64 == 0)
+        {
+            std::cout << "\033[2J";
+            std::cout << "1 - Engage     4 - Ready     7 - Override    0 - Park" << std::endl;
+            
+            std::cout << "MDA inputs: " << std::endl;
+            curr_acceleration_in.print(std::cout);
+            std::cout << std::endl;
+            curr_ang_velocity_in.print(std::cout);
+            std::cout << std::endl;
+            
+            std::cout << "MDA outputs: " << std::endl;
+            curr_pos_out.print(std::cout);
+            std::cout << std::endl;
+            curr_rot_out.print(std::cout);
+            std::cout << std::endl;
+        }
+        
 
         send_ticks++;
         std::this_thread::sleep_until(nextTick);
@@ -279,15 +305,22 @@ void mbinterface::mb_recv_func()
     static_assert(sizeof(DOFresponse) == 40, 
                 "DOF response structure does not match the correct size (probably due to padding)");
     
+    while (!sock_bound)
+    {
+        sleep(1);
+    }
+
     while(true)
     {
-        recv(recv_sock_fd, (void *)&mb_response, sizeof(mb_response), 0);
-
+        //recv(recv_sock_fd, (void *)&mb_response, sizeof(mb_response), 0);
+        recv(send_sock_fd, (void *)&mb_response, sizeof(mb_response), 0);
         if (mb_response.latched_fault_data)
         {
             MB_error_asserted = true;
         }
-        MB_state_reply = ntohl(mb_response.machine_state_info);
+        MB_state_info_raw  = mb_response.machine_state_info;
+        MB_state_reply =  ntohl(mb_response.machine_state_info) & MASK_STATE_ENCODED;
+        //std::cout << "Received reply from MB" << std::endl;
 
     }
 }
@@ -297,7 +330,7 @@ void mbinterface::mb_send_func_ESTABLISH_COMMS()
 {
     send_mb_neutral_command(MCW_DOF_MODE);
 
-    if (MB_state_reply != 0)
+    if (MB_state_info_raw != 0xFFFFFFFF)
     {
         std::cout << "Received reply from MB. Engage when ready." << std::endl;
         //std::cout << "Faults" << 
@@ -334,6 +367,17 @@ void mbinterface::mb_send_func_ENGAGING()
 void mbinterface::mb_send_func_WAIT_FOR_READY()
 {
     send_mb_neutral_command(MCW_NEW_POSITION);
+    /*if (send_ticks % 256 == 0)
+    {
+        std::cout << "Output suppressed:" << std::endl;
+        std::cout << "Pos: ";
+        curr_pos_out.print(std::cout);
+        std::cout << std::endl;
+        std::cout << "Rot: ";
+        curr_rot_out.print(std::cout);
+        std::cout << std::endl;
+
+    }*/
 
     if (userReady)
     {
@@ -361,7 +405,7 @@ void mbinterface::mb_send_func_PARKING()
     userPark = false;
 }
 
-void mbinterface::output_limiter(MCISvector pos, MCISvector rot)
+void mbinterface::output_limiter(MCISvector& pos, MCISvector& rot)
 {
     /* Offset values that need to be offset */
     //This means only the z-position

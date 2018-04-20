@@ -48,7 +48,8 @@ class mbinterface
     private:
     MCISvector curr_pos_out, curr_rot_out;
     MCISvector curr_acceleration_in, curr_ang_velocity_in;
-    const MCISvector init_pos_out{0, 0, 0}, init_rot_out{0, 0, 0};
+    const MCISvector init_pos_out{MB_OFFSET_x, MB_OFFSET_y, MB_OFFSET_z};
+    const MCISvector init_rot_out{MB_OFFSET_roll, MB_OFFSET_pitch, MB_OFFSET_yaw};
 
     iface_status current_status;
 
@@ -61,6 +62,8 @@ class mbinterface
 
     int recv_sock_fd;
     int send_sock_fd;
+
+    bool sock_bound = false;
 
     uint16_t recv_port;
     uint16_t send_port;
@@ -75,6 +78,7 @@ class mbinterface
 
     bool MB_error_asserted = false;
     uint32_t MB_state_reply = 0;
+    uint32_t MB_state_info_raw = 0xFFFFFFFF;
 
 
     xplaneSocket simSocket;
@@ -96,7 +100,7 @@ class mbinterface
     void send_mb_neutral_command(int MCW);
     void testsend_mb_command();
 
-    static void output_limiter(MCISvector pos, MCISvector rot);
+    static void output_limiter(MCISvector& pos, MCISvector& rot);
 
 
     public:

@@ -31,9 +31,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <unistd.h>
 #include "MCIS_MB_interface.h"
 
-#define MB_IP 0x807F3778 //CHANGE ME!
+//#define MB_IP 0x807F3778 //Old IP, 128.127.55.120
+#define MB_IP 0xC0A81405
 #define MB_PORT 991    //CHANGE ME!
-#define LOCAL_PORT 992 //CHANGE ME!
+#define LOCAL_PORT 10500 //CHANGE ME!
 #define XPLANE_RECV_PORT 49000 //CHANGE ME!
 #define configFileName "MCISconfig.bin"
 
@@ -67,7 +68,7 @@ int main()
     int consoleInput = 0;
     while(true)
     {
-        std::cout << "1 - Engage     4 - Ready     7 - Override    0 - Park" << std::endl;
+        //std::cout << "1 - Engage     4 - Ready     7 - Override    0 - Park" << std::endl;
         std::cin >> consoleInput;
         switch (consoleInput)
         {

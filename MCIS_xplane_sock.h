@@ -157,7 +157,7 @@ class xplaneSocket
     //C++11 thread object for the recv thread (fancy fd sort of thing)
     std::thread recvThread;
     //Output buffers
-    MCISvector sfBuffer, angBuffer;
+    MCISvector sfBuffer{0, 0, 9.81}, angBuffer{0, 0, 0};
 
     //The function that loops around, receiving.
     void recvThreadFunc();
