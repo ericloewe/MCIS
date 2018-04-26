@@ -41,7 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "MOOG6DOF2000E.h"
 
 enum iface_status   {ESTABLISH_COMMS, WAIT_FOR_ENGAGE, ENGAGING, 
-                     WAIT_FOR_READY, RATE_LIMITED, ENGAGED, PARKING};
+                     WAIT_FOR_READY, RATE_LIMITED, ENGAGED, PARKING, MB_FAULT};
 
 class mbinterface
 {
@@ -50,6 +50,8 @@ class mbinterface
     MCISvector curr_acceleration_in, curr_ang_velocity_in;
     const MCISvector init_pos_out{MB_OFFSET_x, MB_OFFSET_y, MB_OFFSET_z};
     const MCISvector init_rot_out{MB_OFFSET_roll, MB_OFFSET_pitch, MB_OFFSET_yaw};
+
+    std::mutex output_mutex;
 
     iface_status current_status;
 
@@ -77,7 +79,7 @@ class mbinterface
     bool userOverride = false;
 
     bool MB_error_asserted = false;
-    uint32_t MB_state_reply = 0;
+    uint32_t MB_state_reply = 0xFFFFFFFF;
     uint32_t MB_state_info_raw = 0xFFFFFFFF;
 
 
@@ -112,5 +114,10 @@ class mbinterface
     void setReady();
     void setPark();
     void setOverride();
+
+    unsigned int get_MB_status();
+    iface_status get_iface_status();
+    void get_MDA_status(MCISvector& sf_in, MCISvector& angv_in, 
+                        MCISvector& MB_pos_out, MCISvector& MB_rot_out);
 
 };

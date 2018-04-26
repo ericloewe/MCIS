@@ -106,6 +106,28 @@ void mbinterface::setOverride()
     userOverride = true;
 }
 
+unsigned int mbinterface::get_MB_status()
+{
+    return MB_state_reply;
+}
+
+iface_status mbinterface::get_iface_status()
+{
+    return current_status;
+}
+
+void mbinterface::get_MDA_status(MCISvector& sf_in, MCISvector& angv_in, 
+                        MCISvector& MB_pos_out, MCISvector& MB_rot_out)
+{
+    //Mutex is locked here, to insure consistent reads
+    std::lock_guard<std::mutex> lock(output_mutex);
+    sf_in   = curr_acceleration_in;
+    angv_in = curr_ang_velocity_in;
+    MB_pos_out  = curr_pos_out;
+    MB_rot_out  = curr_rot_out; 
+    //Mutex is unlocked here, as the lock guard is destructed at the end of its scope
+}
+
 void mbinterface::testsend_mb_command()
 {
     DOFpacket testPacket;
@@ -264,21 +286,25 @@ void mbinterface::mb_send_func()
                     break;
             }
         }
-
-        simSocket.getData(curr_acceleration_in, curr_ang_velocity_in);
-        mda.nextSample(curr_acceleration_in, curr_ang_velocity_in);
-        curr_pos_out = mda.getPos();
-        curr_rot_out = mda.getangle();
+        {
+            //Lock the mutex
+            std::lock_guard<std::mutex> lock(output_mutex);
+            simSocket.getData(curr_acceleration_in, curr_ang_velocity_in);
+            mda.nextSample(curr_acceleration_in, curr_ang_velocity_in);
+            curr_pos_out = mda.getPos();
+            curr_rot_out = mda.getangle();
+            //Mutex is unlocked here, as the lock guard is destructed due to end of scope
+        }
 
         /*Clamp outputs down and offset them if needed (z)*/
         output_limiter(curr_pos_out, curr_rot_out);
 
-        if (send_ticks % 64 == 0)
+        /*if (send_ticks % 64 == 0)
         {
-            std::cout << "\033[2J";
-            std::cout << "1 - Engage     4 - Ready     7 - Override    0 - Park" << std::endl;
+            //std::cout << "\033[2J";
+            //std::cout << "1 - Engage     4 - Ready     7 - Override    0 - Park" << std::endl;
             
-            std::cout << "MDA inputs: " << std::endl;
+            //std::cout << "MDA inputs: " << std::endl;
             curr_acceleration_in.print(std::cout);
             std::cout << std::endl;
             curr_ang_velocity_in.print(std::cout);
@@ -289,7 +315,7 @@ void mbinterface::mb_send_func()
             std::cout << std::endl;
             curr_rot_out.print(std::cout);
             std::cout << std::endl;
-        }
+        }*/
         
 
         send_ticks++;
@@ -332,7 +358,7 @@ void mbinterface::mb_send_func_ESTABLISH_COMMS()
 
     if (MB_state_info_raw != 0xFFFFFFFF)
     {
-        std::cout << "Received reply from MB. Engage when ready." << std::endl;
+        //std::cout << "Received reply from MB. Engage when ready." << std::endl;
         //std::cout << "Faults" << 
         current_status = WAIT_FOR_ENGAGE;
     }
@@ -345,7 +371,7 @@ void mbinterface::mb_send_func_WAIT_FOR_ENGAGE()
 
     if (userEngage)
     {
-        std::cout << "Engaging." << std::endl;
+        //std::cout << "Engaging." << std::endl;
         current_status = ENGAGING;
         userEngage = false;
     }
@@ -358,7 +384,7 @@ void mbinterface::mb_send_func_ENGAGING()
 
     if (MB_state_reply == MB_STATE_ENGAGED)
     {
-        std::cout << "MB ready." << std::endl;
+        //std::cout << "MB ready." << std::endl;
         current_status = WAIT_FOR_READY;
     }
 }
@@ -381,7 +407,7 @@ void mbinterface::mb_send_func_WAIT_FOR_READY()
 
     if (userReady)
     {
-        std::cout << "User ready, motion enabled" << std::endl;
+        //std::cout << "User ready, motion enabled" << std::endl;
         current_status = ENGAGED;
         userReady = false;
     }

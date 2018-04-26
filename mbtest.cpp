@@ -28,7 +28,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <unistd.h>
+#include <ncurses.h>
+#include <signal.h>
 #include "MCIS_MB_interface.h"
 
 //#define MB_IP 0x807F3778 //Old IP, 128.127.55.120
@@ -37,6 +40,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define LOCAL_PORT 10500 //CHANGE ME!
 #define XPLANE_RECV_PORT 49000 //CHANGE ME!
 #define configFileName "MCISconfig.bin"
+
+bool cont = true;
+
+void sig_handler(int signo);
 
 int main()
 {
@@ -61,33 +68,148 @@ int main()
     }
     std::cout << "Configuration loaded." << std::endl;
 
+    struct sigaction sig;
 
+    sig.sa_handler = &sig_handler;
+    std::cerr << "Registering signal handlers...   ";
+    if (sigaction(SIGINT, &sig, nullptr) != 0)
+    {
+        std::cerr << "Unable to register signal handler!" << std::endl;
+        return 0;
+    }
+    std::cerr << "Done." << std::endl;
+
+    std::cout << "Starting curses..." << std::endl;
+
+    initscr();				/* start the curses mode */
+    raw();                  //Disable line buffering
+    keypad(stdscr, TRUE);   //Advanced keyboard stuff
+    //noecho();               //Don't echo getch
+    nodelay(stdscr, TRUE);  //Don't block waiting for input
+
+    auto nextTick = std::chrono::high_resolution_clock::now();
+    auto sampleTime = std::chrono::nanoseconds( (int)(1e9 / 60));
+
+    MCISvector sf, angv, pos, rot;
+
+    std::stringstream vector_stream;
+    char out_str[128];
     
     mbinterface motion_base(MB_PORT, LOCAL_PORT, MB_IP, XPLANE_RECV_PORT, config);
 
     int consoleInput = 0;
     while(true)
     {
-        //std::cout << "1 - Engage     4 - Ready     7 - Override    0 - Park" << std::endl;
-        std::cin >> consoleInput;
-        switch (consoleInput)
+        nextTick += sampleTime;
+        //clear();
+        mvprintw(1, 1, "E - Engage     R - Ready     O - Override    P - Park    Q - Exit");
+        mvprintw(2, 5, "MB state: ");
+        switch (motion_base.get_MB_status())
         {
-            case 1:
-                motion_base.setEngage();
+            case MB_STATE_POWER_UP:
+                printw("POWER UP");
                 break;
-            case 4:
-                motion_base.setReady();
+            case MB_STATE_IDLE:
+                printw("IDLE");
                 break;
-            case 7:
-                motion_base.setOverride();
+            case MB_STATE_STANDBY:
+                printw("STANDBY");
                 break;
-            case 0:
-                motion_base.setPark();
+            case MB_STATE_ENGAGED:
+                printw("ENGAGED");
+                break;
+            case MB_STATE_PARKING:
+                printw("PARKING");
+                break;
+            case MB_STATE_FAULT1:
+                printw("FAULT1");
+                break;
+            case MB_STATE_FAULT2:
+                printw("FAULT2");
+                break;
+            case MB_STATE_FAULT3:
+                printw("FAULT3");
+                break;
+            case MB_STATE_DISABLED:
+                printw("DISABLED");
+                break;
+            case MB_STATE_INHIBITED:
+                printw("INHIBITED");
+                break;
+            default:
+                printw("UNKNOWN");
                 break;
         }
 
+        motion_base.get_MDA_status(sf, angv, pos, rot);
+
+        sf.print(vector_stream);
+        vector_stream.getline(out_str, 128);
+        mvprintw(4, 5, "Input acceleration:    %s", out_str);
+
+        angv.print(vector_stream);
+        vector_stream.getline(out_str, 128);
+        mvprintw(5, 5, "Input angular velocity: %s", out_str);
+
+        pos.print(vector_stream);
+        vector_stream.getline(out_str, 128);
+        mvprintw(7, 5, "Output position:        %s", out_str);
+
+        rot.print(vector_stream);
+        vector_stream.getline(out_str, 128);
+        mvprintw(8, 5, "Output angles:          %s", out_str);
+
+        refresh();
+
+        consoleInput = getch();
+        flushinp();
+        if (consoleInput != ERR)
+        {
+            switch (consoleInput)
+            {
+                case 'e':
+                case 'E':
+                    motion_base.setEngage();
+                    break;
+                case 'r':
+                case 'R':
+                    motion_base.setReady();
+                    break;
+                case 'o':
+                case 'O':
+                    motion_base.setOverride();
+                    break;
+                case 'p':
+                case 'P':
+                    motion_base.setPark();
+                    break;
+                case 'q':
+                case 'Q':
+                    iface_status status = motion_base.get_iface_status();
+                    if ((status == ENGAGING) ||  (status == WAIT_FOR_READY)
+                        || (status == ENGAGED) || (status == RATE_LIMITED)
+                        || (status == PARKING))
+                    {
+                        motion_base.setPark();
+                    }
+                    else
+                    {
+                        cont = false;
+                    }
+                    break;
+            }
+        }
+        std::this_thread::sleep_until(nextTick);
+    }
+
+    endwin();
+    std::cout << "Exited curses mode" << std::endl;
+    
 
 
-    };
-    //The basics are now in place
+}
+
+void sig_handler(int signo)
+{
+    cont = false;
 }
