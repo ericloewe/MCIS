@@ -86,6 +86,19 @@ void writeMCISfullOutputs(std::ostream& outfile,
 
 
 /*
+ *  Write MDA log
+ * 
+ * Writes six inputs (a_x, a_y, a_z, p, q, r) and six outputs 
+ * (x, y, z, phi, theta, psi) to a CSV file
+ */
+void write_MDA_log(std::ostream& outfile,
+                    const MCISvector& acc_in,
+                    const MCISvector& angv_in,
+                    const MCISvector& pos_out,
+                    const MCISvector& ang_out);
+
+
+/*
  *  These functions all write binary values to file, in machine format.
  */
 

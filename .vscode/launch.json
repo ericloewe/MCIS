@@ -9,7 +9,7 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/MCIStest",
+            "program": "${workspaceFolder}/mbtest",
             "args": ["testinputs2/test0.csv"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

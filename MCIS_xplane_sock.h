@@ -169,19 +169,19 @@ class xplaneSocket
     public:
 
     xplaneSocket(uint16_t localPort, xplaneMsgType msgType);
-    ~xplaneSocket();
+    //~xplaneSocket();
 
-    
+    void stop();
     void getData(MCISvector& spForces, MCISvector& angVelocities);
 
 
 
 };
 
-class xp9Socket : public xplaneSocket
+/*class xp9Socket : public xplaneSocket
 {
     private:
     xplane9msg rawMsg;
 
 
-};
+};*/

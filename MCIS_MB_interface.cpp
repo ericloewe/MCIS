@@ -33,10 +33,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "MOOG6DOF2000E.h"
 #include "MCIS_MB_interface.h"
 #include "MCIS_util.h"
+#include "MCIS_fileio.h"
 
 mbinterface::mbinterface(uint16_t mb_send_port, uint16_t mb_recv_port, 
                          uint32_t mb_IP, uint16_t xp_recv_port, 
-                         MCISconfig mdaconfig) :
+                         MCISconfig mdaconfig, std::fstream& MDA_log) :
                          simSocket{xp_recv_port, XP9},
                          mda{mdaconfig}
 {
@@ -70,12 +71,34 @@ mbinterface::mbinterface(uint16_t mb_send_port, uint16_t mb_recv_port,
         throw invalid_sock_fd_exception;
     }*/
 
+    MDA_logfile = &MDA_log;
+
     //We start in the first state
     current_status = ESTABLISH_COMMS;
 
     //Spawn other threads
     MB_recv_thread = std::thread(&mbinterface::mb_recv_func, this);
     MB_send_thread = std::thread(&mbinterface::mb_send_func, this);
+
+
+}
+
+void mbinterface::stop()
+{
+    simSocket.stop();
+    continue_operation = false;
+
+    MB_send_thread.join();
+
+    int ret = shutdown(send_sock_fd, SHUT_RDWR);
+    if (ret != 0 && errno != ENOTCONN)
+    {
+        std::runtime_error except(
+            "MB Socket shutdown did not return 0. You're deep in undefined behavior now.\n");
+        throw except;
+    }
+
+    MB_recv_thread.join();
 
 
 }
@@ -104,6 +127,11 @@ void mbinterface::setReady()
 void mbinterface::setOverride()
 {
     userOverride = true;
+}
+
+int mbinterface::get_ticks()
+{
+    return send_ticks;
 }
 
 unsigned int mbinterface::get_MB_status()
@@ -210,7 +238,7 @@ void mbinterface::send_mb_neutral_command(int MCW)
 
 void mbinterface::mb_send_func()
 {
-    std::cout << "Send thread spawned!" << std::endl;
+    //std::cout << "Send thread spawned!" << std::endl;
 
     auto nextTick = std::chrono::high_resolution_clock::now();
     //std::chrono::high_resolution_clock::duration oneSecond(std::chrono::duration<long long>(1));
@@ -220,7 +248,7 @@ void mbinterface::mb_send_func()
     send_mb_neutral_command(MCW_DOF_MODE);
     sock_bound = true;
 
-    while (true)
+    while (continue_operation)
     {
         nextTick += sampleTime;
 
@@ -294,6 +322,8 @@ void mbinterface::mb_send_func()
             curr_pos_out = mda.getPos();
             curr_rot_out = mda.getangle();
             //Mutex is unlocked here, as the lock guard is destructed due to end of scope
+            write_MDA_log(*MDA_logfile, curr_acceleration_in, curr_ang_velocity_in,
+                            curr_pos_out, curr_rot_out);
         }
 
         /*Clamp outputs down and offset them if needed (z)*/
@@ -336,7 +366,7 @@ void mbinterface::mb_recv_func()
         sleep(1);
     }
 
-    while(true)
+    while(continue_operation)
     {
         //recv(recv_sock_fd, (void *)&mb_response, sizeof(mb_response), 0);
         recv(send_sock_fd, (void *)&mb_response, sizeof(mb_response), 0);

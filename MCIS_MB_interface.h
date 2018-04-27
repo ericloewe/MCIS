@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
+#include <fstream>
 #include <thread>
 #include <chrono>
 #include <stdexcept>
@@ -46,6 +47,9 @@ enum iface_status   {ESTABLISH_COMMS, WAIT_FOR_ENGAGE, ENGAGING,
 class mbinterface
 {
     private:
+    
+    bool continue_operation = true;
+    
     MCISvector curr_pos_out, curr_rot_out;
     MCISvector curr_acceleration_in, curr_ang_velocity_in;
     const MCISvector init_pos_out{MB_OFFSET_x, MB_OFFSET_y, MB_OFFSET_z};
@@ -62,7 +66,7 @@ class mbinterface
     int ticks_per_tock = 2;
     int DOF_mode_ticks = 60;
 
-    int recv_sock_fd;
+    //int recv_sock_fd;
     int send_sock_fd;
 
     bool sock_bound = false;
@@ -86,6 +90,7 @@ class mbinterface
     xplaneSocket simSocket;
     MCIS_MDA mda;
 
+    std::fstream *MDA_logfile;
 
     void mb_recv_func();
     void mb_send_func();
@@ -106,14 +111,20 @@ class mbinterface
 
 
     public:
+    
+    void stop();
+    
     mbinterface(uint16_t mb_send_port, uint16_t mb_recv_port, uint32_t mb_IP,
-                uint16_t xp_recv_port, MCISconfig mdaconfig);
+                uint16_t xp_recv_port, MCISconfig mdaconfig, 
+                std::fstream& MDA_log);
     //~mbinterface();
 
     void setEngage();
     void setReady();
     void setPark();
     void setOverride();
+
+    int get_ticks();
 
     unsigned int get_MB_status();
     iface_status get_iface_status();
