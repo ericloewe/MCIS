@@ -30,11 +30,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <fstream>
 #include <vector>
 #include <chrono>
-#include "MCIS_config.h"
-#include "MCIS_MDA.h"
-#include "discreteMath.h"
-#include "MCIS_xplane_sock.h"
-#include "MCIS_fileio.h"
+#include "include/MCIS_config.h"
+#include "include/MCIS_MDA.h"
+#include "include/discreteMath.h"
+#include "include/MCIS_xplane_sock.h"
+#include "include/MCIS_fileio.h"
 
 #define configFileName "MCISconfig.bin"
 #define outFilename "nettest.csv"

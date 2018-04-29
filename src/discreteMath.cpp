@@ -1,4 +1,4 @@
-/* 
+/**********************************************************************
 Copyright (c) 2018, Eric Loewenthal
 All rights reserved.
 
@@ -30,7 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vector>
 #include <stdexcept>
 #include <string>
-#include "discreteMath.h"
+#include "include/discreteMath.h"
 
 
 

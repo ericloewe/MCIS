@@ -31,8 +31,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cstring> //For memcpy
 #include <sstream>
 #include <exception>
-#include "discreteMath.h"
-#include "MCIS_fileio.h"
+#include "include/discreteMath.h"
+#include "include/MCIS_fileio.h"
 
 
 

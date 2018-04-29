@@ -33,7 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream>
 #include <ostream>
 #include <vector>
-#include "discreteMath.h"
+#include "include/discreteMath.h"
 
 int main(void)
 {

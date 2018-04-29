@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cassert>
 #include <unistd.h>
 #include <math.h>
-#include "MCIS_xplane_sock.h"
+#include "include/MCIS_xplane_sock.h"
 
 
 

@@ -30,10 +30,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream>
 #include <type_traits>
 #include <unistd.h>
-#include "MOOG6DOF2000E.h"
-#include "MCIS_MB_interface.h"
-#include "MCIS_util.h"
-#include "MCIS_fileio.h"
+#include "include/MOOG6DOF2000E.h"
+#include "include/MCIS_MB_interface.h"
+#include "include/MCIS_util.h"
+#include "include/MCIS_fileio.h"
 
 mbinterface::mbinterface(uint16_t mb_send_port, uint16_t mb_recv_port, 
                          uint32_t mb_IP, uint16_t xp_recv_port, 

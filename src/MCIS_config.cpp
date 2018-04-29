@@ -26,7 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <iostream>
-#include "MCIS_config.h"
+#include "include/MCIS_config.h"
 
 void MCISconfig::print(std::ostream& dest)
 {

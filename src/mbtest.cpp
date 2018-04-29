@@ -32,7 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <unistd.h>
 #include <ncurses.h>
 #include <signal.h>
-#include "MCIS_MB_interface.h"
+#include "include/MCIS_MB_interface.h"
 
 /* All this stuff is going into a config file */
 //#define MB_IP 0x807F3778 //Old IP, 128.127.55.120

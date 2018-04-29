@@ -15,7 +15,7 @@
  * expressed or implied by its publication or distribution.
  **********************************************************************/
  
-#include "crc.h"
+#include "include/crc.h"
 
 
 /*
