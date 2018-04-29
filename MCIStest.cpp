@@ -41,7 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define inFilename "MCISinput.csv"
 #define outFilename "MCISoutput.csv"
 
-#define testFolder "./testinputs/"
+#define testFolder "./testinputs2/"
 #define testLen 9
 #define testStart 1
 
@@ -109,10 +109,12 @@ int main (int argc, char **argv)
 
         MCISvector sfIn, angIn, posOut, angOut;
 
+        //while (readMCISinputs(infile, sfIn, angIn))
         while (readMCISinputs(infile, sfIn, angIn))
         {
             mda.nextSample(sfIn, angIn);
             writeMCISfullOutputs(outfile, mda.getPos(), mda.getangle(), mda.getAngleNoTC());
+            //writeMCISfullOutputsBin(outfile, mda.getPos(), mda.getangle(), mda.getAngleNoTC());
         }
 
         std::cout << "done." << std::endl;

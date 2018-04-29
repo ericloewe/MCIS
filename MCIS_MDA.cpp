@@ -25,7 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 */
 
-
+#include <iostream>
 #include <vector>
 #include <stdexcept>
 #include "MCIS_MDA.h"
@@ -75,8 +75,9 @@ MCIS_MDA::MCIS_MDA(const MCISconfig& config)
  * 3) Scaled angular velocities from 2) are used as input for the 
  *      Motion Base Orientation block, angleBlock, by calling
  *      angleBlock.nextSample().
+ *      Feedback of the last iteration's angle output is used.
  *      The output is stored in angleNoTCout
- * 4) The output of angleBlock from 3) is fed into the Tilt Coordination Block,
+ * 4) The previous iteration's angle output is fed into the Tilt Coordination Block,
  *      tiltBlock, to be used along with the scaled linear accelerations from 
  *      2) in tiltBlock.nextSample().
  *      The output is stored in angleOut.
@@ -97,14 +98,63 @@ void MCIS_MDA::nextSample(const MCISvector& accelerations, const MCISvector& ang
     angInput.applyScalarGains(kp, kq, kr);
 
     // 3) Calculate the Motion Base position from the angular velocity input
-    angleNoTCout = angleBlock.nextSample(angInput);
+    angleNoTCout = angleBlock.nextSample(angInput, angleOut);
 
     // 4) Calculate Tilt Coordination using known MB orientation and acceleration input
-    angleOut = tiltBlock.nextSample(accInput, angleNoTCout);
+    angleOut = tiltBlock.nextSample(accInput, angleOut, angleNoTCout);
 
     // 5) Calculate the Motion Base position from the acceleration input
     posOut = posBlock.nextSample(accInput, angleOut);
 }
+
+
+/*
+ * ---------------OBSOLETE------------------------------------------- 
+ * MCIS_MDA::nextSample_MCISv2
+ * 
+ * THIS FUNCTION IS OBSOLETE AND KEPT FOR COMPARISON PURPOSES
+ * 
+ * Run one iteration of the MCIS MDA
+ * 
+ * Theory of operation / signal path:
+ * 
+ * 1) - NOT IMPLEMENTED YET - Linear acceleration is offset from CG
+ * 2) Inputs are scaled
+ * 3) Scaled angular velocities from 2) are used as input for the 
+ *      Motion Base Orientation block, angleBlock, by calling
+ *      angleBlock.nextSample().
+ *      The output is stored in angleNoTCout
+ * 4) The output of angleBlock from 3) is fed into the Tilt Coordination Block,
+ *      tiltBlock, to be used along with the scaled linear accelerations from 
+ *      2) in tiltBlock.nextSample().
+ *      The output is stored in angleOut.
+ * 5) The output of tiltBlock from 4) is used along with the scaled linear 
+ *      accelerations from 2) as the input for the Motion Base Position block,
+ *      posBlock, specifically posBlock.nextSample()
+ *      The output is stored in posOut.
+ * 
+ * All outputs can be later retrieved using the getter functions.
+ */
+void MCIS_MDA::nextSample_MCISv2(const MCISvector& accelerations, const MCISvector& angularVelocities)
+{
+    accInput = accelerations;
+    angInput = angularVelocities;
+    
+    // 2) Scale inputs
+    accInput.applyScalarGains(kX, kY, kZ);
+    angInput.applyScalarGains(kp, kq, kr);
+
+    // 3) Calculate the Motion Base position from the angular velocity input
+    angleNoTCout = angleBlock.nextSample_MCISv2(angInput);
+
+    // 4) Calculate Tilt Coordination using known MB orientation and acceleration input
+    angleOut = tiltBlock.nextSample_MCISv2(accInput, angleOut);
+
+    // 5) Calculate the Motion Base position from the acceleration input
+    posOut = posBlock.nextSample(accInput, angleOut);
+}
+
+
 
 /*
  *  MCIS_MDA getters
@@ -161,6 +211,25 @@ void body2inert(MCISvector& vec, const MCISvector& eulerAngles)
 }
 
 
+/*
+ * pqr2eulerRates
+ * 
+ * Converts the body angular velocities pqr to Euler angle rates
+ * 
+ * Basically, we just apply the transformation matrix, calculated using the
+ * Motion Base's Euler angles.
+ */
+void pqr2eulerRates(MCISvector& vec, const MCISvector& eulerAngles)
+{
+    //Generate an empty matrix that we will fill with the transformation
+    MCISmatrix transform{};
+    transform.pqr2eulerRates(eulerAngles);
+
+    //Now we just multiply the vector
+    vec = transform * vec;
+}
+
+
 
 
 
@@ -194,6 +263,51 @@ angHPchannel::angHPchannel(const MCISconfig& config)
  * 
  * Theory of operation/signal path:
  * 1) Input signal frame of reference is rotated to inertial frame using
+ *      external feedback
+ * 2) The vector is split  up into its three components
+ * 3) Inputs are clamped down to their limits (saturation)
+ * 4) Each element is used as the input for the 
+ *      the respective filter (which includes the integrator)
+ * 5) Filter output gets reassembled into an MCISvector and is returned
+ *      and stored for the next iteration.
+ */
+MCISvector angHPchannel::nextSample(const MCISvector& input, const MCISvector& eulerAngles)
+{
+    //Copy the input vector so that we can operate on it safely
+    MCISvector omega = input;
+    
+    // 1) Rotate input's frame of reference from body to inertial
+    pqr2eulerRates(omega, eulerAngles);
+
+    // 2) Split up the vector
+    double pChannel = omega.getVal(0);
+    double qChannel = omega.getVal(1);
+    double rChannel = omega.getVal(2);
+
+    // 3) Run the inputs through the saturations
+    pChannel = rollSat.nextSample(pChannel);
+    qChannel = pitchSat.nextSample(qChannel);
+    rChannel = yawSat.nextSample(rChannel);
+
+    // 4) Run the saturated inputs through the filters
+    pChannel = rollFiltK  * rollFilt.nextSample(pChannel);
+    qChannel = pitchFiltK * pitchFilt.nextSample(qChannel);
+    rChannel = yawFiltK   * yawFilt.nextSample(rChannel);
+
+    lastOutput.assign(pChannel, qChannel, rChannel);
+    return lastOutput;
+}
+
+/*
+ *  --------------------OBSOLETE-----------------------------
+ *  angHPchannel::nextSample_MCISv2
+ * 
+ * THIS FUNCTION IS OBSOLETE AS OF MCISv3.
+ * 
+ * Run one iteration of the filter bank
+ * 
+ * Theory of operation/signal path:
+ * 1) Input signal frame of reference is rotated to inertial frame using
  *      the previous period's output
  * 2) The vector is split  up into its three components
  * 3) Inputs are clamped down to their limits (saturation)
@@ -202,15 +316,18 @@ angHPchannel::angHPchannel(const MCISconfig& config)
  * 5) Filter output gets reassembled into an MCISvector and is returned
  *      and stored for the next iteration.
  */
-MCISvector angHPchannel::nextSample(MCISvector& input)
+MCISvector angHPchannel::nextSample_MCISv2(const MCISvector& input)
 {
+    //Copy the input vector so that we can operate on it safely
+    MCISvector omega = input;
+    
     // 1) Rotate input's frame of reference from body to inertial
-    body2inert(input, lastOutput);
+    body2inert(omega, lastOutput);
 
     // 2) Split up the vector
-    double pChannel = input.getVal(0);
-    double qChannel = input.getVal(1);
-    double rChannel = input.getVal(2);
+    double pChannel = omega.getVal(0);
+    double qChannel = omega.getVal(1);
+    double rChannel = omega.getVal(2);
 
     // 3) Run the inputs through the saturations
     pChannel = rollSat.nextSample(pChannel);
@@ -267,15 +384,18 @@ posHPchannel::posHPchannel(const MCISconfig& config)
  *      the respective filter (which includes the integrator)
  * 6) Filter output gets reassembled into an MCISvector
  */
-MCISvector posHPchannel::nextSample(MCISvector& input, const MCISvector& MBangles)
+MCISvector posHPchannel::nextSample(const MCISvector& input, const MCISvector& MBangles)
 {
+    //Copy the input vector so that we can operate on it safely
+    MCISvector sf = input;
+
     // 1) Rotate input's frame of reference from body to inertial
-    body2inert(input, MBangles);
+    body2inert(sf, MBangles);
 
     // 2) Split up the vector
-    double xChannel = input.getVal(0);
-    double yChannel = input.getVal(1);
-    double zChannel = input.getVal(2);
+    double xChannel = sf.getVal(0);
+    double yChannel = sf.getVal(1);
+    double zChannel = sf.getVal(2);
 
     // 3) Subtract gravity in the Z-axis
     zChannel -= zGravSub;
@@ -316,14 +436,78 @@ tiltCoordination::tiltCoordination(const MCISconfig& config)
         yFiltK{config.filt_SF_LP_y_disc.biquads[0].gain},
         xSat{config.lim_TC_x, 0},
         ySat{config.lim_TC_y, 0},
-        xRatelim{config.ratelim_TC_x, 0},
-        yRatelim{config.ratelim_TC_y, 0},
+        xRatelim{config.ratelim_TC_x / config.sampleRate, 0},
+        yRatelim{config.ratelim_TC_y / config.sampleRate, 0},
         xGain{config.K_TC_x},
         yGain{config.K_TC_y}
 {}
 
 /*
  *  tiltCoordination::nextSample
+ * 
+ * Run one iteration of the filter bank
+ * 
+ * Theory of operation/signal path:
+ * 1) Input signal frame of reference is rotated to inertial frame using
+ *      the MBangles input vector, corresponding to the orientation
+ *      of the Motion Base fed back from the output
+ * 2) The vector is split  up into its three components and z gets dumped
+ * 3) Inputs are clamped down to their limits (saturation)
+ * 4) Each element is multiplied by the Tilt Coordination gain for its axis
+ * 5) Each element is used as the input for the respective filter
+ * 6) Each element is rate-limited   
+ * 7) Filter output gets reassembled into an MCISvector - note that
+ *      the output vector is constructed as [y, x, 0], because y acceleration
+ *      affects the roll output, x acceleration affects the pitch output and
+ *      z acceleration has no tilt coordination
+ * 8) This vector is summed with the hpAngles input and returned.
+ */
+MCISvector tiltCoordination::nextSample(const MCISvector& input, const MCISvector& MBangles, 
+                                        const MCISvector& hpAngles)
+{
+    //Copy the input vector so that we can operate on it safely
+    MCISvector sf = input;
+    
+    // 1) Rotate input's frame of reference from body to inertial
+    body2inert(sf, MBangles);
+
+    // 2) Split up the vector
+    double xChannel = sf.getVal(0);
+    double yChannel = sf.getVal(1);
+
+    // 3) Apply saturation
+    xChannel = xSat.nextSample(xChannel);
+    yChannel = ySat.nextSample(yChannel);
+
+    // 4) Apply TC gain
+    xChannel *= xGain;
+    yChannel *= yGain;
+
+    // 5) Run through the filters
+    xChannel = xFiltK * xFilt.nextSample(xChannel);
+    yChannel = yFiltK * yFilt.nextSample(yChannel);
+
+    // 6) Apply rate limiting
+    xChannel = xRatelim.nextSample(xChannel);
+    yChannel = yRatelim.nextSample(yChannel);
+
+    // 7) Reassemble the vector
+    //Note that it's [y, x, 0]
+    MCISvector output{yChannel, xChannel, 0};
+
+    // 8) Sum the tilt coordination part to the existing orientation
+    output += hpAngles;
+    return output;
+}
+
+
+
+
+
+/*
+ * ----------------------OBSOLETE---------------------------------------------------------- 
+ * 
+ * tiltCoordination::nextSample_MCISv2
  * 
  * Run one iteration of the filter bank
  * 
@@ -342,14 +526,17 @@ tiltCoordination::tiltCoordination(const MCISconfig& config)
  *      z acceleration has no tilt coordination
  * 8) This vector is summed with the MBangles input and returned.
  */
-MCISvector tiltCoordination::nextSample(MCISvector& input, const MCISvector& MBangles)
+MCISvector tiltCoordination::nextSample_MCISv2(const MCISvector& input, const MCISvector& MBangles)
 {
+    //Copy the input vector so that we can operate on it safely
+    MCISvector sf = input;
+    
     // 1) Rotate input's frame of reference from body to inertial
-    body2inert(input, MBangles);
+    body2inert(sf, MBangles);
 
     // 2) Split up the vector
-    double xChannel = input.getVal(0);
-    double yChannel = input.getVal(1);
+    double xChannel = sf.getVal(0);
+    double yChannel = sf.getVal(1);
 
     // 3) Apply saturation
     xChannel = xSat.nextSample(xChannel);

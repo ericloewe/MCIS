@@ -64,6 +64,8 @@ class params2ndOrderFilt
 
 //Rotate frame of reference from body to inertial axes
 void body2inert(MCISvector& vec, const MCISvector& eulerAngles);
+//Convert body angular velocities into Euler angle rates
+void pqr2eulerRates(MCISvector& vec, const MCISvector& eulerAngles);
 
 
 
@@ -86,7 +88,8 @@ class angHPchannel
     angHPchannel(const MCISconfig& config);
 
 
-    MCISvector nextSample(MCISvector& input);
+    MCISvector nextSample(const MCISvector& input, const MCISvector& eulerAngles);
+    MCISvector nextSample_MCISv2(const MCISvector& input); //Obsolete
 
     //Not implemented, reserved for future use
     void setFilterParameters(const MCISconfig& config);
@@ -113,7 +116,7 @@ class posHPchannel
     posHPchannel(const MCISconfig& config);
 
 
-    MCISvector nextSample(MCISvector& input, const MCISvector& MBangles);
+    MCISvector nextSample(const MCISvector& input, const MCISvector& MBangles);
 
     //Not implemented, reserved for future use
     void setFilterParameters(const MCISconfig& config);
@@ -138,7 +141,8 @@ class tiltCoordination
     tiltCoordination(const MCISconfig& config);
 
 
-    MCISvector nextSample(MCISvector& input, const MCISvector& MBangles);
+    MCISvector nextSample(const MCISvector& input, const MCISvector& MBangles, const MCISvector& hpAngles);
+    MCISvector nextSample_MCISv2(const MCISvector& input, const MCISvector& MBangles);
 
     //Not implemented, reserved for future use
     void setFilterParameters(const MCISconfig& config);
@@ -169,6 +173,7 @@ class MCIS_MDA
     MCIS_MDA(const MCISconfig& config);
 
     void nextSample(const MCISvector& accelerations, const MCISvector& angularVelocities);
+    void nextSample_MCISv2(const MCISvector& accelerations, const MCISvector& angularVelocities);
     MCISvector& getPos();
     MCISvector& getangle();
     MCISvector& getAngleNoTC();

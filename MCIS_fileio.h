@@ -43,6 +43,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 bool readMCISinputs(std::istream& infile, MCISvector& accIn, MCISvector& angIn);
 
 /*
+ * readMCISinputs
+ * 
+ * Reads doubles from a file, in machine format. That means it is ENDIAN-DEPENDENT.
+ * 
+ * Don't try to export data from Matlab directly to an ARM device...
+ */
+bool readMCISinputsBin(std::istream& infile, MCISvector& accIn, MCISvector& angIn);
+
+/*
  *  writeMCISoutputs
  * 
  * Writes a set of six doubles from the MCIS output
@@ -71,6 +80,57 @@ void writeBaseMCISoutputs(std::ostream& outfile,
  * X,Y,Z position, roll, pitch, yaw
  */
 void writeMCISfullOutputs(std::ostream& outfile, 
+                        const MCISvector& accIn, 
+                        const MCISvector& angIn,
+                        const MCISvector& noTCin);
+
+
+/*
+ *  Write MDA log
+ * 
+ * Writes six inputs (a_x, a_y, a_z, p, q, r) and six outputs 
+ * (x, y, z, phi, theta, psi) to a CSV file
+ */
+void write_MDA_log(std::ostream& outfile,
+                    const MCISvector& acc_in,
+                    const MCISvector& angv_in,
+                    const MCISvector& pos_out,
+                    const MCISvector& ang_out);
+
+
+/*
+ *  These functions all write binary values to file, in machine format.
+ */
+
+/*
+ *  writeMCISoutputsBin
+ * 
+ * Writes a set of six doubles from the MCIS output
+ * X,Y,Z position, roll, pitch, yaw
+ */
+void writeMCISoutputsBin(std::ostream& outfile, 
+                    const MCISvector& accIn, 
+                    const MCISvector& angIn);
+
+/*
+ *  writeBaseMCISoutputsBin
+ * 
+ * Writes a set of six doubles from the MCIS output
+ * X,Y,Z position, roll, pitch, yaw
+ * 
+ * Actual heavy lifting goes here
+ */
+void writeBaseMCISoutputsBin(std::ostream& outfile, 
+                    const MCISvector& accIn, 
+                    const MCISvector& angIn);
+
+/*
+ *  writeMCISfullOutputsBin
+ * 
+ * Writes a set of six doubles from the MCIS output
+ * X,Y,Z position, roll, pitch, yaw
+ */
+void writeMCISfullOutputsBin(std::ostream& outfile, 
                         const MCISvector& accIn, 
                         const MCISvector& angIn,
                         const MCISvector& noTCin);

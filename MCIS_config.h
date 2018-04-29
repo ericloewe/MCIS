@@ -141,6 +141,10 @@ class MCISconfig
     //Low-pass filtering pre-limiting
     double lim_TC_x, lim_TC_y;
     //Low-pass filtering rate limiting
+    /*
+     *  These are stored in rad/s. The limiters must determine the correct 
+     *  per sample rate limit to use based on the current sample rate.
+     */
     double ratelim_TC_x, ratelim_TC_y;
 
     /*

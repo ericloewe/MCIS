@@ -618,7 +618,8 @@ MCISvector MCISvector::crossProduct(const MCISvector& aVector, const MCISvector&
 
     MCISvector resOut(result);
 
-    return std::move(resOut);
+    //return std::move(resOut);
+    return resOut;
 }
 
 /*
@@ -1050,46 +1051,88 @@ void MCISmatrix::transpose()
 */
 void MCISmatrix::euler2DCM_ZYX_inv(const MCISvector& eulerAngles)
 {
-/*
-    *  We need the sine and cosine of every element of eulerAngles,
-    *  and we need them repeatedly. We'll pre-calculate these first,
-    *  then do the rest of the work in a vectorization-friendly manner. 
-    */
+    /*
+        *  We need the sine and cosine of every element of eulerAngles,
+        *  and we need them repeatedly. We'll pre-calculate these first,
+        *  then do the rest of the work in a vectorization-friendly manner. 
+        */
 
-double sPhi, sTheta, sPsi, cPhi, cTheta, cPsi;
+    double sPhi, sTheta, sPsi, cPhi, cTheta, cPsi;
 
-sPhi    = sin(eulerAngles.getVal(0));
-sTheta  = sin(eulerAngles.getVal(1));
-sPsi    = sin(eulerAngles.getVal(2));
+    sPhi    = sin(eulerAngles.getVal(0));
+    sTheta  = sin(eulerAngles.getVal(1));
+    sPsi    = sin(eulerAngles.getVal(2));
 
-cPhi    = cos(eulerAngles.getVal(0));
-cTheta  = cos(eulerAngles.getVal(1));
-cPsi    = cos(eulerAngles.getVal(2));
+    cPhi    = cos(eulerAngles.getVal(0));
+    cTheta  = cos(eulerAngles.getVal(1));
+    cPsi    = cos(eulerAngles.getVal(2));
 
-/*
-    *  Now we can assign the matrix elements
-    * 
-    * Remember that we're in Row-Column order:
-    * 
-    * | 0 1 2 |
-    * | 3 4 5 |
-    * | 6 7 8 |
-    * 
-    * Also, don't forget that we're assigning the transpose.
-    */
-this -> elements[0] = cTheta * cPsi;
-this -> elements[1] = sPhi*sTheta*cPsi - cPhi*sPsi; 
-this -> elements[2] = cPhi*sTheta*cPsi + sPhi*sPsi;
+    /*
+        *  Now we can assign the matrix elements
+        * 
+        * Remember that we're in Row-Column order:
+        * 
+        * | 0 1 2 |
+        * | 3 4 5 |
+        * | 6 7 8 |
+        * 
+        * Also, don't forget that we're assigning the transpose.
+        */
+    this -> elements[0] = cTheta * cPsi;
+    this -> elements[1] = sPhi*sTheta*cPsi - cPhi*sPsi; 
+    this -> elements[2] = cPhi*sTheta*cPsi + sPhi*sPsi;
 
-this -> elements[3] = cTheta*sPsi;
-this -> elements[4] = sPhi*sTheta*sPsi + cPhi*cPsi;
-this -> elements[5] = cPhi*sTheta*sPsi - sPhi*cPsi;
+    this -> elements[3] = cTheta*sPsi;
+    this -> elements[4] = sPhi*sTheta*sPsi + cPhi*cPsi;
+    this -> elements[5] = cPhi*sTheta*sPsi - sPhi*cPsi;
 
-this -> elements[6] = - sTheta;
-this -> elements[7] = sPhi * cTheta;
-this -> elements[8] = cPhi * cTheta;
+    this -> elements[6] = - sTheta;
+    this -> elements[7] = sPhi * cTheta;
+    this -> elements[8] = cPhi * cTheta;
 }
 
+/*
+     *
+     * Calculate the transformation matrix from body angular velocities to
+     * Euler angle rates. 
+     * 
+     */
+    void MCISmatrix::pqr2eulerRates(const MCISvector& eulerAngles)
+    {
+        /*
+         *  We'll need these values repeatedly, so we'll precalculate them
+         */
+        double sPhi, cPhi, tanTheta, secTheta;
+
+        sPhi    = sin(eulerAngles.getVal(0));
+        cPhi    = cos(eulerAngles.getVal(0));
+
+        tanTheta = tan(eulerAngles.getVal(1));
+        secTheta = 1 / cos(eulerAngles.getVal(1));
+
+        /*
+        *  Now we can assign the matrix elements
+        * 
+        * Remember that we're in Row-Column order:
+        * 
+        * | 0 1 2 |
+        * | 3 4 5 |
+        * | 6 7 8 |
+        * 
+        * Also, don't forget that we're assigning the transpose.
+        */
+        this -> elements[0] = 1;
+        this -> elements[1] = sPhi * tanTheta; 
+        this -> elements[2] = cPhi * tanTheta;
+
+        this -> elements[3] =   0;
+        this -> elements[4] =   cPhi;
+        this -> elements[5] = - sPhi;
+
+        this -> elements[6] = 0;
+        this -> elements[7] = sPhi * secTheta;
+        this -> elements[8] = cPhi * secTheta;
+    }
 
 
 
@@ -1176,9 +1219,26 @@ rateLimit::rateLimit(double limSetting, double initOutput) : saturation(limSetti
  */
 double rateLimit::nextSample(double input)
 {
-    double inputRate = input - output;
+    double inputRate = input - output; //x(n) - x(n-1)
+    double absRate = fabs(inputRate);
+
+    if (absRate > limit)
+    {
+        if (inputRate < 0)
+        {
+            output -= limit;
+        }
+        else
+        {
+            output += limit;
+        }
+    }
+    else
+    {
+        output = input;
+    }
     
-    if (abs(inputRate) > limit && inputRate < 0)
+    /*if (abs(inputRate) > limit && inputRate < 0)
     {
         output -= limit;
     }
@@ -1189,7 +1249,7 @@ double rateLimit::nextSample(double input)
     else
     {
         output = input;
-    }
+    }*/
     
     return output;
 }

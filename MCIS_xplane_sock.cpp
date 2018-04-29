@@ -50,7 +50,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * It also spawns the thread that will actually receive stuff
  */
-xplaneSocket::xplaneSocket(int localPort, xplaneMsgType msgType)
+xplaneSocket::xplaneSocket(uint16_t localPort, xplaneMsgType msgType)
 {
     //Boilerplate socket setup
     sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -86,18 +86,38 @@ xplaneSocket::xplaneSocket(int localPort, xplaneMsgType msgType)
 /*
  *  xplaneSocket destructor
  * 
- * Steps taken:
+ * Probably bad Steps taken:
  * 
  * 1) Tell the recv thread function to stop
  * 2) Wait for the recv thread to join
  * 3) Close the socket
  */
-xplaneSocket::~xplaneSocket()
+/*xplaneSocket::~xplaneSocket()
 {
     continueRecv = false;
     recvThread.join();
     close(sock_fd);
+}*/
+
+/* 
+ *  exit
+ * 
+ * Break the loop and allow the receive thread to return.
+ */
+void xplaneSocket::stop()
+{
+    continueRecv = false;
+    int ret = shutdown(sock_fd, SHUT_RDWR);
+    if (ret != 0 && errno != ENOTCONN)
+    {
+        std::runtime_error except(
+            "XP Socket shutdown did not return 0. You're deep in undefined behavior now.\n");
+        throw except;
+    }
+
+    recvThread.join();
 }
+
 
 /*
  *  recvThreadFunc
@@ -112,18 +132,24 @@ void xplaneSocket::recvThreadFunc()
     unsigned int recvAddrSize;
     int receivedBytes;
     
-    std::cout << "recvThread started..." << std::endl;
+    //std::cout << "recvThread started..." << std::endl;
 
     while (continueRecv)
     {
-        receivedBytes = recvfrom(sock_fd, (void *)&rawMsg, XP9_MSG_SIZE,
+        //The cast is to silence -Wconversion. We are NEVER going to receive
+        //more than 2^32 bytes at once.
+        receivedBytes = (int)recvfrom(sock_fd, (void *)&rawMsg, XP9_MSG_SIZE,
                                    0, (sockaddr*)&recvAddr, &recvAddrSize);
         
+        if (!continueRecv)
+        {
+            return;
+        }
         if (receivedBytes == -1)
         {
             //Todo - make this an exception and catch upstack
-            std::cerr << "Receive socket returned -1" << std::endl;
-            exit(1);
+            std::cerr << "X-Plane receive socket returned -1" << std::endl;
+            return;
         }
         
         if (messageVersion == XP9)

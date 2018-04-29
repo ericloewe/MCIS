@@ -37,7 +37,6 @@
                 "/usr/include/boost",
                 "/usr/lib/",
                 "${workspaceRoot}"
-                
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",
@@ -55,7 +54,10 @@
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""
-            }
+            },
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c11",
+            "cppStandard": "c++17"
         },
         {
             "name": "Win32",

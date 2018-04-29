@@ -384,6 +384,14 @@ class MCISmatrix: public genericVector
      */
     void euler2DCM_ZYX_inv(const MCISvector& eulerAngles);
 
+    /*
+     *
+     * Calculate the transformation matrix from body angular velocities to
+     * Euler angle rates. 
+     * 
+     */
+    void pqr2eulerRates(const MCISvector& eulerAngles);
+
     
 
 };
