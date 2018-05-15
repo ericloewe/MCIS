@@ -458,3 +458,24 @@ class rateLimit: public saturation
     
 };
 
+/*
+ *  vectorRateLimit
+ * 
+ * Apply a scalar rate limit to every element of the vector
+ * 
+ * This class could be refactored for genericVector, but MCISvector is fine for us
+ */
+class vectorRateLimit
+{
+    private:
+    //Scalar rate limits
+    rateLimit lim0, lim1, lim2;
+
+    public:
+    //Constructor
+    vectorRateLimit(double rateLimit, const MCISvector& initOutput);
+
+    void nextSample(MCISvector& input);
+    void overrideOutput(const MCISvector& newOutput);
+};
+

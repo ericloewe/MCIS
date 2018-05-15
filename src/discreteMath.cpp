@@ -1263,4 +1263,44 @@ void rateLimit::overrideOutput(double newOutput)
     output = newOutput;
 }
 
+/*
+ *
+ *      ---=== class vectorRateLimit ==---
+ * 
+ */
 
+/*
+ *  constructor
+ * 
+ * Constructs the indididual scalar rateLimits using the given limit
+ * and starting value
+ */
+vectorRateLimit::vectorRateLimit(double rateLimit, const MCISvector& initOutput) : 
+    lim0{rateLimit, initOutput.getVal(0)},
+    lim1{rateLimit, initOutput.getVal(1)},
+    lim2{rateLimit, initOutput.getVal(2)}
+{}
+
+/*
+ *  nextSample
+ * 
+ * Apply the rate limit to the given input vector, based on internal state
+ */
+void vectorRateLimit::nextSample(MCISvector& input)
+{
+    input.setVal(0, lim0.nextSample(input.getVal(0)));
+    input.setVal(1, lim1.nextSample(input.getVal(1)));
+    input.setVal(2, lim2.nextSample(input.getVal(2)));
+}
+
+/*
+ *  overrideOutput
+ * 
+ * Set a new output value, bypassing the rate limits
+ */ 
+void vectorRateLimit::overrideOutput(const MCISvector& newOutput)
+{
+    lim0.overrideOutput(newOutput.getVal(0));
+    lim1.overrideOutput(newOutput.getVal(1));
+    lim2.overrideOutput(newOutput.getVal(2));
+}

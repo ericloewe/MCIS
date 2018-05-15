@@ -26,7 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 /*
- *  Barebones test application for MCIS
+ *  MCIS offline processing application
  */
 
 #include <iostream>

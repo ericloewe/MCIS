@@ -41,35 +41,12 @@ mbinterface::mbinterface(uint16_t mb_send_port, uint16_t mb_recv_port,
                          simSocket{xp_recv_port, XP9},
                          mda{mdaconfig}
 {
-    //recv_sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
     send_sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
-
-    /*if (recv_sock_fd < 1 || send_sock_fd < 1)
-    {
-        std::runtime_error sock_open_failed_exception("Could not open MB sockets!\n");
-        throw sock_open_failed_exception;
-    }
-    //Bind recv socket
-    recvAddr.sin_family = AF_INET;
-    recvAddr.sin_addr.s_addr = INADDR_ANY;
-    recvAddr.sin_port = htons(mb_recv_port);
-    if (bind(recv_sock_fd, (sockaddr*)&recvAddr, sizeof(struct sockaddr_in)) == -1)
-    {
-        std::runtime_error invalid_sock_fd_exception("Failed to bind socket to INADDR_ANY!\n");
-        throw invalid_sock_fd_exception;
-    }*/
-
 
     //Send socket addressing
     sendAddr.sin_family = AF_INET;
     sendAddr.sin_addr.s_addr = htonl(mb_IP);
-    //sendAddr.sin_addr.s_addr = INADDR_ANY;
     sendAddr.sin_port = htons(mb_send_port);
-    /*if (bind(send_sock_fd, (sockaddr*)&sendAddr, sizeof(struct sockaddr_in)) == -1)
-    {
-        std::runtime_error invalid_sock_fd_exception("Failed to bind socket to MB IP!\n");
-        throw invalid_sock_fd_exception;
-    }*/
 
     MDA_logfile = &MDA_log;
 
@@ -79,8 +56,6 @@ mbinterface::mbinterface(uint16_t mb_send_port, uint16_t mb_recv_port,
     //Spawn other threads
     MB_recv_thread = std::thread(&mbinterface::mb_recv_func, this);
     MB_send_thread = std::thread(&mbinterface::mb_send_func, this);
-
-
 }
 
 void mbinterface::stop()
@@ -99,8 +74,6 @@ void mbinterface::stop()
     }
 
     MB_recv_thread.join();
-
-
 }
 
 void mbinterface::setEngage()
@@ -127,6 +100,11 @@ void mbinterface::setReady()
 void mbinterface::setOverride()
 {
     userOverride = true;
+}
+
+void mbinterface::setReset()
+{
+    userReset = true;
 }
 
 int mbinterface::get_ticks()
@@ -254,8 +232,11 @@ void mbinterface::mb_send_func()
 
         if (send_ticks % ticks_per_tock == 0)
         {
-            //Communicate with MB
-            if (!(current_status == ESTABLISH_COMMS || current_status == WAIT_FOR_ENGAGE))
+            
+            if (!(current_status == ESTABLISH_COMMS)    && 
+                !(current_status == WAIT_FOR_ENGAGE)    &&
+                !(current_status == MB_FAULT)           &&
+                !(current_status == MB_RECOVERABLE_FAULT))
             {
                 if (userPark)
                 {
@@ -264,6 +245,15 @@ void mbinterface::mb_send_func()
                 
             }
 
+            //Handle MB faults
+            if (MB_state_reply == MB_STATE_FAULT1 || 
+                MB_state_reply == MB_STATE_FAULT2 ||
+                MB_state_reply == MB_STATE_FAULT3 )
+            {
+                current_status = MB_FAULT;
+            }
+
+            //Communicate with MB
             switch (current_status)
             {
                 case ESTABLISH_COMMS:
@@ -312,8 +302,18 @@ void mbinterface::mb_send_func()
                 case PARKING:
                     mb_send_func_PARKING();
                     break;
+                case MB_FAULT:
+                    mb_send_func_MB_FAULT();
+                    break;
+                case MB_RECOVERABLE_FAULT:
+                    mb_send_func_MB_RECOVERABLE_FAULT();
+                    break;
             }
+            //Delete any unused user input
+            reset_user_commands();
         }
+        // This block exists only to allow the lock guard object to be 
+        // destructed before the loop iteration ends.
         {
             //Lock the mutex
             std::lock_guard<std::mutex> lock(output_mutex);
@@ -329,32 +329,19 @@ void mbinterface::mb_send_func()
         /*Clamp outputs down and offset them if needed (z)*/
         output_limiter(curr_pos_out, curr_rot_out);
 
-        /*if (send_ticks % 64 == 0)
-        {
-            //std::cout << "\033[2J";
-            //std::cout << "1 - Engage     4 - Ready     7 - Override    0 - Park" << std::endl;
-            
-            //std::cout << "MDA inputs: " << std::endl;
-            curr_acceleration_in.print(std::cout);
-            std::cout << std::endl;
-            curr_ang_velocity_in.print(std::cout);
-            std::cout << std::endl;
-            
-            std::cout << "MDA outputs: " << std::endl;
-            curr_pos_out.print(std::cout);
-            std::cout << std::endl;
-            curr_rot_out.print(std::cout);
-            std::cout << std::endl;
-        }*/
-        
-
         send_ticks++;
         std::this_thread::sleep_until(nextTick);
     }
 }
 
 
-
+/*
+ *  recv_func
+ * 
+ * Loop around, receiving the MB's replies
+ * 
+ * TODO - consider adding a timeout
+ */
 void mbinterface::mb_recv_func()
 {
     DOFresponse mb_response;
@@ -381,86 +368,211 @@ void mbinterface::mb_recv_func()
     }
 }
 
+/*
+ *  ---=== send function definitions ===---
+ */
 
+/*
+ *  ESTABLISH_COMMS state function
+ * 
+ * We just wait until the MB state is updated, then switch to the next state
+ */
 void mbinterface::mb_send_func_ESTABLISH_COMMS()
 {
     send_mb_neutral_command(MCW_DOF_MODE);
 
     if (MB_state_info_raw != 0xFFFFFFFF)
     {
-        //std::cout << "Received reply from MB. Engage when ready." << std::endl;
-        //std::cout << "Faults" << 
         current_status = WAIT_FOR_ENGAGE;
     }
 }
 
-
+/*
+ *  WAIT_FOR_ENGAGE state function
+ * 
+ * We have to wait for the user to command an ENGAGE
+ */
 void mbinterface::mb_send_func_WAIT_FOR_ENGAGE()
 {
     send_mb_neutral_command(MCW_NEW_POSITION);
 
     if (userEngage)
     {
-        //std::cout << "Engaging." << std::endl;
         current_status = ENGAGING;
-        userEngage = false;
+        state_start = std::chrono::high_resolution_clock::now();
     }
-
 }
 
+/*
+ *  ENGAGING state function
+ * 
+ * We have to wait for the MB to engage.
+ * We timeout after a few seconds and treat it as a failure
+ */
 void mbinterface::mb_send_func_ENGAGING()
 {
     send_mb_neutral_command(MCW_START);
 
     if (MB_state_reply == MB_STATE_ENGAGED)
     {
-        //std::cout << "MB ready." << std::endl;
         current_status = WAIT_FOR_READY;
+        return;
+    }
+
+    //Check if we timed out
+    state_current = std::chrono::high_resolution_clock::now();
+    auto period = state_current - state_start;
+    if (period > delay10s)
+    {
+        //We have timed out
+        current_status  = MB_FAULT;
+        current_error   = MB_ENGAGE_FAILED; 
     }
 }
 
-
+/*
+ *  WAIT_FOR_READY state function
+ * 
+ * We hold the MB in the neutral position until told to start moving
+ * by the user.
+ */
 void mbinterface::mb_send_func_WAIT_FOR_READY()
 {
     send_mb_neutral_command(MCW_NEW_POSITION);
-    /*if (send_ticks % 256 == 0)
-    {
-        std::cout << "Output suppressed:" << std::endl;
-        std::cout << "Pos: ";
-        curr_pos_out.print(std::cout);
-        std::cout << std::endl;
-        std::cout << "Rot: ";
-        curr_rot_out.print(std::cout);
-        std::cout << std::endl;
-
-    }*/
 
     if (userReady)
     {
-        //std::cout << "User ready, motion enabled" << std::endl;
-        current_status = ENGAGED;
-        userReady = false;
+        current_status = RATE_LIMITED;
+        //Set the timer for the next state
+        state_start = std::chrono::high_resolution_clock::now();
+        //Reset the rate limiters
+        pos_rate_limiter.overrideOutput(init_pos_out);
+        rot_rate_limiter.overrideOutput(init_rot_out);
     }
 }
 
-
+/*
+ *  RATE_LIMITED state function
+ * 
+ * We have to rate limit the output for a few seconds to allow for non-neutral
+ * starting positions, which basically happen *all* the time.
+ */
 void mbinterface::mb_send_func_RATE_LIMITED()
 {
-    //TODO - ADD THIS ONE
+    //First apply the rate limits
+    pos_rate_limiter.nextSample(curr_pos_out);
+    rot_rate_limiter.nextSample(curr_rot_out);
+
+    //Now we can send as normal
+    send_mb_command(MCW_NEW_POSITION, curr_pos_out, curr_rot_out);
+
+    //Verify if we're ready to move on
+    state_current = std::chrono::high_resolution_clock::now();
+    auto period = state_current - state_start;
+    if (period > delay10s)
+    {
+        //We're ready
+        current_status = ENGAGED;
+    }
 }
 
+/*
+ *  ENGAGED state function
+ * 
+ * We just send commands. Nothing more. Parking is handled up the stack
+ */
 void mbinterface::mb_send_func_ENGAGED()
 {
     send_mb_command(MCW_NEW_POSITION, curr_pos_out, curr_rot_out);
 }
 
-
+/*
+ *  PARKING state function
+ * 
+ * We transition back to WAIT_FOR_ENGAGE when the MB states switches to idle
+ */
 void mbinterface::mb_send_func_PARKING()
 {
     send_mb_neutral_command(MCW_PARK);
-    userPark = false;
+
+    if (MB_state_reply == MB_STATE_IDLE)
+    {
+        current_status = WAIT_FOR_ENGAGE;
+    }
 }
 
+/*
+ *  MB_FAULT state function
+ * 
+ * There is some fault with the MB. Currently, we send a park command,
+ * but this behavior is debatable.
+ * 
+ * This state requires the application to be restarted.
+ */
+void mbinterface::mb_send_func_MB_FAULT()
+{
+    send_mb_neutral_command(MCW_PARK);
+}
+
+/*
+ *  MB_RECOVERABLE_FAULT state function
+ * 
+ * This state represents recoverable faults. MB Fault 2s are sometimes 
+ * recoverable. Currently, we send a park command,
+ * but this behavior is debatable.
+ * 
+ * If faced with an unknown FAULT 2, consult the Moog 6DOF2000E User's manual
+ * document number CDS7238 before proceeding with opperation.
+ */
+void mbinterface::mb_send_func_MB_RECOVERABLE_FAULT()
+{
+    send_mb_neutral_command(MCW_PARK);
+
+    // We only cancel the error condition if the MB has done so already
+    if (MB_state_reply == MB_STATE_IDLE)
+    {
+        current_status = WAIT_FOR_ENGAGE;
+    }
+
+    // The RESET command is sent out of sync, in addition to the regular 60Hz
+    // commands. This shouldn't be a problem, since the MB has to be parked to
+    // act upon a RESET command.
+    // Nevertheless, keep this in mind in case something very weird happens.
+    if (userReset)
+    {
+        send_mb_neutral_command(MCW_RESET);
+    }
+}
+
+/*
+ *  ***** send function definitions end here *****
+ */
+
+/*
+ *  reset user commands to false to respect POLA
+ * 
+ * Users get astonished if their accidental input early on
+ * ends up getting interpreted later in the program when the state that
+ * uses that input is reached.
+ */
+void mbinterface::reset_user_commands()
+{
+    userEngage  = false;
+    userReady   = false;
+    userPark    = false;
+    userReset   = false;
+}
+
+/*
+ *  output_limiter
+ * 
+ * Limit outputs to the range accepted by the MB
+ * 
+ * Note that a Z-offset is required for Rev E11 software, but not
+ * for Rev E16. The offset calculation can be optimized out if Rev E16 is used
+ * (though -O3 will probably do it automagically, since the limits are 
+ * preprocessor #defines).
+ */
 void mbinterface::output_limiter(MCISvector& pos, MCISvector& rot)
 {
     /* Offset values that need to be offset */
@@ -529,5 +641,4 @@ void mbinterface::output_limiter(MCISvector& pos, MCISvector& rot)
     {
         rot.setVal(2, MB_LIM_HIGH_yaw);
     }
-
 }

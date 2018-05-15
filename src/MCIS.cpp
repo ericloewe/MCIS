@@ -160,25 +160,27 @@ int main()
                 break;
         }
 
+        mvprintw(3, 5, "Interface status: %d", motion_base.get_iface_status());
+
         motion_base.get_MDA_status(sf, angv, pos, rot);
 
         sf.print(vector_stream);
         vector_stream.getline(out_str, 128);
-        mvprintw(4, 5, "Input acceleration:    %s", out_str);
+        mvprintw(5, 5, "Input acceleration:    %s", out_str);
 
         angv.print(vector_stream);
         vector_stream.getline(out_str, 128);
-        mvprintw(5, 5, "Input angular velocity: %s", out_str);
+        mvprintw(6, 5, "Input angular velocity: %s", out_str);
 
         pos.print(vector_stream);
         vector_stream.getline(out_str, 128);
-        mvprintw(7, 5, "Output position:        %s", out_str);
+        mvprintw(9, 5, "Output position:        %s", out_str);
 
         rot.print(vector_stream);
         vector_stream.getline(out_str, 128);
-        mvprintw(8, 5, "Output angles:          %s", out_str);
+        mvprintw(10, 5, "Output angles:          %s", out_str);
 
-        mvprintw(10, 5, "Send clock ticks: %d", motion_base.get_ticks());
+        mvprintw(14, 5, "Send clock ticks: %d", motion_base.get_ticks());
 
         refresh();
 

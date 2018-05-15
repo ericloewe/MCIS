@@ -42,7 +42,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "MOOG6DOF2000E.h"
 
 enum iface_status   {ESTABLISH_COMMS, WAIT_FOR_ENGAGE, ENGAGING, 
-                     WAIT_FOR_READY, RATE_LIMITED, ENGAGED, PARKING, MB_FAULT};
+                     WAIT_FOR_READY, RATE_LIMITED, ENGAGED, PARKING, MB_FAULT,
+                     MB_RECOVERABLE_FAULT};
+
+//These are all self-explanatory
+enum iface_error    {NONE, MB_FAULT_1, MB_FAULT_2, MB_FAULT_3, 
+                     MB_RESPONSE_TIMED_OUT, MB_ENGAGE_FAILED, 
+                     MB_ESTOP};
 
 class mbinterface
 {
@@ -54,10 +60,19 @@ class mbinterface
     MCISvector curr_acceleration_in, curr_ang_velocity_in;
     const MCISvector init_pos_out{MB_OFFSET_x, MB_OFFSET_y, MB_OFFSET_z};
     const MCISvector init_rot_out{MB_OFFSET_roll, MB_OFFSET_pitch, MB_OFFSET_yaw};
+    //The rate limits are defined per sample
+    //0.34 mm/sample ~= 20 mm/s
+    double pos_rate_lim = 3.4e-4;
+    //0.016 degree/sample ~= 1 degree/s
+    double rot_rate_lim = 0.016;
+
+    vectorRateLimit pos_rate_limiter{pos_rate_lim, init_pos_out};
+    vectorRateLimit rot_rate_limiter{rot_rate_lim, init_rot_out};
 
     std::mutex output_mutex;
 
-    iface_status current_status;
+    iface_status current_status = ESTABLISH_COMMS;
+    iface_error  current_error = NONE;
 
     std::thread MB_recv_thread;
     std::thread MB_send_thread;
@@ -71,20 +86,31 @@ class mbinterface
 
     bool sock_bound = false;
 
-    uint16_t recv_port;
+    //uint16_t recv_port;
     uint16_t send_port;
 
-    struct sockaddr_in recvAddr;
+    //struct sockaddr_in recvAddr;
     struct sockaddr_in sendAddr;
 
     bool userEngage = false;
     bool userReady  = false;
     bool userPark   = false;
     bool userOverride = false;
+    bool userReset = false;
 
     bool MB_error_asserted = false;
     uint32_t MB_state_reply = 0xFFFFFFFF;
     uint32_t MB_state_info_raw = 0xFFFFFFFF;
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> state_start;
+    std::chrono::time_point<std::chrono::high_resolution_clock> state_current;
+
+    std::chrono::duration<int64_t, std::nano> delay10s = std::chrono::nanoseconds((int) 1e10);
+    std::chrono::duration<int64_t, std::nano> delay15s = std::chrono::nanoseconds((int) 1.5e10);
+
+    //std::chrono::duration<std::chrono::high_resolution_clock> 10s_timeout = 
+    //    std::chrono::seconds((int) 10);
+
 
 
     xplaneSocket simSocket;
@@ -102,10 +128,14 @@ class mbinterface
     void mb_send_func_RATE_LIMITED();
     void mb_send_func_ENGAGED();
     void mb_send_func_PARKING();
+    void mb_send_func_MB_FAULT();
+    void mb_send_func_MB_RECOVERABLE_FAULT();
 
     void send_mb_command(int MCW, MCISvector& pos, MCISvector& rot);
     void send_mb_neutral_command(int MCW);
     void testsend_mb_command();
+
+    void reset_user_commands();
 
     static void output_limiter(MCISvector& pos, MCISvector& rot);
 
@@ -123,6 +153,7 @@ class mbinterface
     void setReady();
     void setPark();
     void setOverride();
+    void setReset();
 
     int get_ticks();
 
