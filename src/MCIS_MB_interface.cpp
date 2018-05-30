@@ -399,7 +399,7 @@ void mbinterface::mb_send_func_WAIT_FOR_ENGAGE()
     if (userEngage)
     {
         current_status = ENGAGING;
-        state_start = std::chrono::high_resolution_clock::now();
+        state_start = send_ticks;
     }
 }
 
@@ -420,9 +420,10 @@ void mbinterface::mb_send_func_ENGAGING()
     }
 
     //Check if we timed out
-    state_current = std::chrono::high_resolution_clock::now();
-    auto period = state_current - state_start;
-    if (period > delay10s)
+    //state_current = std::chrono::high_resolution_clock::now();
+    //auto period = state_current - state_start;
+    auto elapsed = send_ticks - state_start;
+    if (elapsed > engage_timeout_period)
     {
         //We have timed out
         current_status  = MB_FAULT;
@@ -444,7 +445,8 @@ void mbinterface::mb_send_func_WAIT_FOR_READY()
     {
         current_status = RATE_LIMITED;
         //Set the timer for the next state
-        state_start = std::chrono::high_resolution_clock::now();
+        //state_start = std::chrono::high_resolution_clock::now();
+        state_start = send_ticks;
         //Reset the rate limiters
         pos_rate_limiter.overrideOutput(init_pos_out);
         rot_rate_limiter.overrideOutput(init_rot_out);
@@ -467,9 +469,10 @@ void mbinterface::mb_send_func_RATE_LIMITED()
     send_mb_command(MCW_NEW_POSITION, curr_pos_out, curr_rot_out);
 
     //Verify if we're ready to move on
-    state_current = std::chrono::high_resolution_clock::now();
-    auto period = state_current - state_start;
-    if (period > delay10s)
+    //state_current = std::chrono::high_resolution_clock::now();
+    //auto period = state_current - state_start;
+    auto elapsed = send_ticks - state_start;
+    if (elapsed > rate_limit_timeout_period)
     {
         //We're ready
         current_status = ENGAGED;

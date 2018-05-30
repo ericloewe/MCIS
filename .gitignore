@@ -32,3 +32,5 @@ cmakefiles/*
 CMakeCache.txt
 MCIS-offline
 lib/*
+testinputs/*.csv
+MCIS

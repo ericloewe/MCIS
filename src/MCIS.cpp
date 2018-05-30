@@ -103,7 +103,7 @@ int main()
     initscr();				/* start the curses mode */
     raw();                  //Disable line buffering
     //keypad(stdscr, TRUE);   //Advanced keyboard stuff
-    //noecho();               //Don't echo getch
+    noecho();               //Don't echo getch
     nodelay(stdscr, TRUE);  //Don't block waiting for input
 
     auto nextTick = std::chrono::high_resolution_clock::now();
@@ -120,47 +120,77 @@ int main()
     while(cont)
     {
         nextTick += sampleTime;
-        //clear();
+        clear();
         mvprintw(1, 1, "E - Engage     R - Ready     O - Override    P - Park    Q - Exit");
         mvprintw(2, 5, "MB state: ");
         switch (motion_base.get_MB_status())
         {
             case MB_STATE_POWER_UP:
-                printw("POWER UP");
+                printw("POWER UP ");
                 break;
             case MB_STATE_IDLE:
-                printw("IDLE");
+                printw("IDLE     ");
                 break;
             case MB_STATE_STANDBY:
-                printw("STANDBY");
+                printw("STANDBY  ");
                 break;
             case MB_STATE_ENGAGED:
-                printw("ENGAGED");
+                printw("ENGAGED  ");
                 break;
             case MB_STATE_PARKING:
-                printw("PARKING");
+                printw("PARKING  ");
                 break;
             case MB_STATE_FAULT1:
-                printw("FAULT1");
+                printw("FAULT1   ");
                 break;
             case MB_STATE_FAULT2:
-                printw("FAULT2");
+                printw("FAULT2   ");
                 break;
             case MB_STATE_FAULT3:
-                printw("FAULT3");
+                printw("FAULT3   ");
                 break;
             case MB_STATE_DISABLED:
-                printw("DISABLED");
+                printw("DISABLED ");
                 break;
             case MB_STATE_INHIBITED:
                 printw("INHIBITED");
                 break;
             default:
-                printw("UNKNOWN");
+                printw("UNKNOWN  ");
                 break;
         }
 
-        mvprintw(3, 5, "Interface status: %d", motion_base.get_iface_status());
+        mvprintw(3, 5, "Interface status: ");
+        switch (motion_base.get_iface_status())
+        {
+            case ESTABLISH_COMMS:
+                printw("Establishing communication               ");
+                break;
+            case WAIT_FOR_ENGAGE:
+                printw("Waiting for user to engage               ");
+                break;
+            case ENGAGING:
+                printw("MB engaging, please wait...              ");
+                break;
+            case WAIT_FOR_READY:
+                printw("MB engaged. Waiting for user ready signal");
+                break;
+            case RATE_LIMITED:
+                printw("Engaged - Output is rate limited         ");
+                break;
+            case ENGAGED:
+                printw("Engaged.                                 ");
+                break;
+            case PARKING:
+                printw("MB parking, please wait...               ");
+                break;
+            case MB_FAULT:
+                printw("MB reports a fault! Troubleshooting required!");
+                break;
+            case MB_RECOVERABLE_FAULT:
+                printw("MB reports a possibly recoverable fault! ");
+                break;
+        }
 
         motion_base.get_MDA_status(sf, angv, pos, rot);
 

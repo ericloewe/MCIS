@@ -20,7 +20,7 @@ add_library(MCIS_fileio STATIC          ${PROJECT_SOURCE_DIR}/MCIS_fileio.cpp)
 add_library(MCIS_MDA STATIC             ${PROJECT_SOURCE_DIR}/MCIS_MDA.cpp)
 add_library(MCIS_xplane_sock STATIC     ${PROJECT_SOURCE_DIR}/MCIS_xplane_sock.cpp)
 add_library(MCIS_MB_interface STATIC    ${PROJECT_SOURCE_DIR}/MCIS_MB_interface.cpp)
-target_link_libraries(MCIS_MB_interface MCIS_xplane_sock)
+target_link_libraries(MCIS_MB_interface MCIS_xplane_sock MCIS_MDA MCIS_fileio)
 
 
 

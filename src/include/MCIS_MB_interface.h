@@ -77,9 +77,13 @@ class mbinterface
     std::thread MB_recv_thread;
     std::thread MB_send_thread;
 
-    int send_ticks = 1;
-    int ticks_per_tock = 2;
-    int DOF_mode_ticks = 60;
+    unsigned long int send_ticks = 1;
+    unsigned long int ticks_per_tock = 2;
+    unsigned long int engage_timeout_period     = 1200;
+    unsigned long int rate_limit_timeout_period = 1200;
+
+    unsigned long int state_start; 
+    //int DOF_mode_ticks = 60;
 
     //int recv_sock_fd;
     int send_sock_fd;
@@ -102,11 +106,11 @@ class mbinterface
     uint32_t MB_state_reply = 0xFFFFFFFF;
     uint32_t MB_state_info_raw = 0xFFFFFFFF;
 
-    std::chrono::time_point<std::chrono::high_resolution_clock> state_start;
-    std::chrono::time_point<std::chrono::high_resolution_clock> state_current;
+    //std::chrono::time_point<std::chrono::high_resolution_clock> state_start;
+    //std::chrono::time_point<std::chrono::high_resolution_clock> state_current;
 
-    std::chrono::duration<int64_t, std::nano> delay10s = std::chrono::nanoseconds((int) 1e10);
-    std::chrono::duration<int64_t, std::nano> delay15s = std::chrono::nanoseconds((int) 1.5e10);
+    //std::chrono::duration<int64_t, std::nano> delay10s = std::chrono::nanoseconds((int) 1e10);
+    //std::chrono::duration<int64_t, std::nano> delay15s = std::chrono::nanoseconds((int) 1.5e10);
 
     //std::chrono::duration<std::chrono::high_resolution_clock> 10s_timeout = 
     //    std::chrono::seconds((int) 10);
