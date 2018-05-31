@@ -37,6 +37,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* MB sample rate in Hz */
 #define MB_SAMPLE_RATE 60
 
+/* Time needed to engage, based on observation, in seconds */
+#define MB_ENGAGE_TIME 11
+/* Engage timeout, to allow the MB to engage, in seconds */
+#define MB_ENGAGE_TIMEOUT 15
+
 /* Motion Command Word definitions */
 #define MCW_DISABLE         220
 #define MCW_PARK            210
