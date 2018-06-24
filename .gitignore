@@ -29,6 +29,7 @@ mbtest
 cmake_install.cmake
 Makefile
 cmakefiles/*
+cmakefiles
 CMakeCache.txt
 MCIS-offline
 lib/*
