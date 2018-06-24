@@ -216,17 +216,15 @@ void xplaneSocket::interpretXP9msg()
     zSf *= gravity;
 
     /*
-     *  Angular velocities are supposedly in degrees per second. We need rad/s
-     *
-     *  Research suggests that this is not the case. X-Plane 11 is documented 
-     *  to use rad/s and previous work suggests that the same happens in 
-     *  X-Plane 9, contrary to what the data.txt file suggests.
+     *  Angular velocities are in rad/s
      */
-    //p *= M_PI/180;
-    //q *= M_PI/180;
-    //r *= M_PI/180;
 
-    //std::cout << xSf << "," << ySf << "," << zSf << "," << p << "," << q << "," << r << std::endl;  
+    /*
+     *  Attitude is in degrees, we need rad
+     */
+    phi   *= M_PI/180;
+    theta *= M_PI/180;
+    psi   *= M_PI/180;
 
     //This lock guard locks the mutex until it is destructed, when this function returns.
     std::lock_guard<std::mutex> lock(stateMutex);
