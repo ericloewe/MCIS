@@ -83,6 +83,8 @@ class angHPchannel
 
     MCISvector lastOutput;
 
+    bool subgrav;
+
     public:
     //Constructor
     angHPchannel(const MCISconfig& config);
@@ -108,12 +110,15 @@ class posHPchannel
     double xFiltK, yFiltK, zFiltK;  //Gains applied after the biquad sections
     saturation xSat, ySat, zSat;
 
+    bool subgrav;
+
     double zGravSub;    //Value to subtract from the z-axis, corresponds to
                         //g*K_SF_z and is set in constructor
+                        //Only if subgrav is false
 
     public:
     //Constructor
-    posHPchannel(const MCISconfig& config);
+    posHPchannel(const MCISconfig& config, bool subtract_gravity);
 
 
     MCISvector nextSample(const MCISvector& input, const MCISvector& MBangles);
@@ -159,20 +164,23 @@ class MCIS_MDA
 {
     private:
 
+    bool subgrav;
+
     angHPchannel        angleBlock;
     tiltCoordination    tiltBlock;
     posHPchannel        posBlock;
 
     MCISvector posOut, angleOut, angleNoTCout;
-    MCISvector accInput, angInput;
+    MCISvector accInput, angvInput, attInput;
 
     double kX, kY, kZ, kp, kq, kr;
 
     public:
 
-    MCIS_MDA(const MCISconfig& config);
+    MCIS_MDA(const MCISconfig& config, bool subtract_gravity);
 
-    void nextSample(const MCISvector& accelerations, const MCISvector& angularVelocities);
+    void nextSample(const MCISvector& accelerations, const MCISvector& angularVelocities, 
+                    const MCISvector& attitude);
     void nextSample_MCISv2(const MCISvector& accelerations, const MCISvector& angularVelocities);
     MCISvector& getPos();
     MCISvector& getangle();

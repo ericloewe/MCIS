@@ -186,7 +186,7 @@ void xplaneSocket::recvThreadFunc()
  */
 void xplaneSocket::interpretXP9msg()
 {
-    double xSf, ySf, zSf, p, q, r;
+    double xSf, ySf, zSf, p, q, r, phi, theta, psi;
 
     xSf = *(float *) (msgPointer + xplane9msg::offset_sfX);
     ySf = *(float *) (msgPointer + xplane9msg::offset_sfY);
@@ -195,7 +195,11 @@ void xplaneSocket::interpretXP9msg()
     p   = *(float *) (msgPointer + xplane9msg::offset_p);
     q   = *(float *) (msgPointer + xplane9msg::offset_q);
     r   = *(float *) (msgPointer + xplane9msg::offset_r);
-    
+
+    phi   = *(float *) (msgPointer + xplane9msg::offset_phi);
+    theta = *(float *) (msgPointer + xplane9msg::offset_theta);
+    psi   = *(float *) (msgPointer + xplane9msg::offset_psi);
+
     #ifdef SYSTEM_IS_BIG_ENDIAN
 
         //Ooops
@@ -212,11 +216,15 @@ void xplaneSocket::interpretXP9msg()
     zSf *= gravity;
 
     /*
-     *  Angular velocities are in degrees per second. We need rad/s
+     *  Angular velocities are supposedly in degrees per second. We need rad/s
+     *
+     *  Research suggests that this is not the case. X-Plane 11 is documented 
+     *  to use rad/s and previous work suggests that the same happens in 
+     *  X-Plane 9, contrary to what the data.txt file suggests.
      */
-    p *= M_PI/180;
-    q *= M_PI/180;
-    r *= M_PI/180;
+    //p *= M_PI/180;
+    //q *= M_PI/180;
+    //r *= M_PI/180;
 
     //std::cout << xSf << "," << ySf << "," << zSf << "," << p << "," << q << "," << r << std::endl;  
 
@@ -224,7 +232,8 @@ void xplaneSocket::interpretXP9msg()
     std::lock_guard<std::mutex> lock(stateMutex);
 
     sfBuffer.assign(xSf, ySf, zSf);
-    angBuffer.assign(p, q, r);
+    angvBuffer.assign(p, q, r);
+    attBuffer.assign(phi, theta, psi);
 }
 
 /*
@@ -233,9 +242,10 @@ void xplaneSocket::interpretXP9msg()
  * Of note is the fact that it locks a mutex to prevent the data from being
  * clobbered by the recv thread while it is being copied off
  */
-void xplaneSocket::getData(MCISvector& spForces, MCISvector& angVelocities)
+void xplaneSocket::getData(MCISvector& spForces, MCISvector& angVelocities, MCISvector& attitude)
 {
     std::lock_guard<std::mutex> lock(stateMutex);
     spForces        = sfBuffer;
-    angVelocities   = angBuffer;
+    angVelocities   = angvBuffer;
+    attitude        = attBuffer;
 }

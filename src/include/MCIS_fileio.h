@@ -40,7 +40,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * Reads a set of six doubles to serve as inputs for MCIS
  * X,Y,Z acceleration, roll, pitch, yaw rates
  */
-bool readMCISinputs(std::istream& infile, MCISvector& accIn, MCISvector& angIn);
+bool readMCISinputs(std::istream& infile, 
+                    MCISvector& accIn, MCISvector& angvIn, MCISvector& attIn);
 
 /*
  * readMCISinputs
@@ -94,6 +95,7 @@ void writeMCISfullOutputs(std::ostream& outfile,
 void write_MDA_log(std::ostream& outfile,
                     const MCISvector& acc_in,
                     const MCISvector& angv_in,
+                    const MCISvector& att_in,
                     const MCISvector& pos_out,
                     const MCISvector& ang_out);
 

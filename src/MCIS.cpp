@@ -41,20 +41,35 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define LOCAL_PORT 10500 //CHANGE ME!
 #define XPLANE_RECV_PORT 49000 //CHANGE ME!
 #define configFileName "MCISconfig.bin"
-#define MDA_LOGNAME "mdalog.csv"
+#define MDA_LOGNAME "mdalog"
+#define MDA_LOGEXT  ".csv"
 #define XP_RECV_LOGNAME "xplog.csv"
 #define MB_LOGNAME "mblog.csv"
+
+#define NO_GRAV_OPNAME "-nograv"
 
 bool cont = true;
 
 void sig_handler(int signo);
 
-int main()
+int main(int argc, char *argv[])
 {
+    
+    
     MCISconfig config;
     char *fileIn = (char *)&config;
     std::ifstream configFile;
     std::fstream MDA_log;
+    bool subgrav = true;
+
+    if (argc > 1)
+    {
+        std::string option = argv[1];
+        if (!option.compare(NO_GRAV_OPNAME))
+        {
+            subgrav = false;
+        }
+    }
     
     //TODO - Proper config treatment
     //Try to open the config file...
@@ -73,8 +88,33 @@ int main()
     }
     std::cout << "Configuration loaded." << std::endl;
 
-    //Open MDA log
-    MDA_log.open(MDA_LOGNAME, MDA_log.out | MDA_log.trunc);
+    /*
+     *  Open the mdalog file
+     * 
+     * Overwriting existing files is somewhat user-hostile, so we create a new one
+     */
+    std::string filename = MDA_LOGNAME;
+    std::string fileext  = MDA_LOGEXT;
+    for (int i = 1; ; i++)
+    {
+        std::string filepath = filename + std::to_string(i) + fileext;
+        MDA_log.open(filepath, std::fstream::in);
+        if (!MDA_log)
+        {
+            MDA_log.close();
+            MDA_log.open(filepath, std::fstream::out);
+            break;
+        }
+        MDA_log.close();
+
+        if (i > 50)
+        {
+            std::cout << "Failed to open a new MDA logfile after 50 attempts!" << std::endl;
+            return 0;
+        }
+    }
+    
+    
     if (!MDA_log.good())
     {
         std::cout << "Failed to open MDA logfile: " << MDA_LOGNAME << std::endl;
@@ -96,7 +136,7 @@ int main()
 
     std::cout << "Initiating MB interface...";
     mbinterface motion_base(MB_PORT, LOCAL_PORT, MB_IP, 
-                            XPLANE_RECV_PORT, config, MDA_log);
+                            XPLANE_RECV_PORT, config, MDA_log, subgrav);
     std::cout << " Done." << std::endl;
     std::cout << "Starting curses..." << std::endl;
 
@@ -109,7 +149,7 @@ int main()
     auto nextTick = std::chrono::high_resolution_clock::now();
     auto sampleTime = std::chrono::nanoseconds( (int)(1e9 / 60));
 
-    MCISvector sf, angv, pos, rot;
+    MCISvector sf, angv, att, pos, rot;
 
     std::stringstream vector_stream;
     char out_str[128];
@@ -159,6 +199,14 @@ int main()
                 printw("UNKNOWN  ");
                 break;
         }
+        if (subgrav)
+        {
+            mvprintw(2, 40, "Subtracting gravity");
+        }
+        else
+        {
+            mvprintw(2, 40, "NO GRAVITY SUBTRACTION");
+        }
 
         mvprintw(3, 5, "Interface status: ");
         switch (motion_base.get_iface_status())
@@ -192,7 +240,7 @@ int main()
                 break;
         }
 
-        motion_base.get_MDA_status(sf, angv, pos, rot);
+        motion_base.get_MDA_status(sf, angv, att, pos, rot);
 
         sf.print(vector_stream);
         vector_stream.getline(out_str, 128);
@@ -201,6 +249,10 @@ int main()
         angv.print(vector_stream);
         vector_stream.getline(out_str, 128);
         mvprintw(6, 5, "Input angular velocity: %s", out_str);
+
+        att.print(vector_stream);
+        vector_stream.getline(out_str, 128);
+        mvprintw(7, 5, "Input attitude        : %s", out_str);
 
         pos.print(vector_stream);
         vector_stream.getline(out_str, 128);
@@ -238,6 +290,7 @@ int main()
                     break;
                 case 'q':
                 case 'Q':
+                case '.':
                     iface_status status = motion_base.get_iface_status();
                     if ((status == ENGAGING) ||  (status == WAIT_FOR_READY)
                         || (status == ENGAGED) || (status == RATE_LIMITED)

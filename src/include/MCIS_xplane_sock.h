@@ -114,6 +114,28 @@ class xplane9msg
     static const unsigned int offset_p = 85;
     static const unsigned int offset_q = 81;
     static const unsigned int offset_r = 89;
+
+    static const unsigned int offset_phi   = 121;
+    static const unsigned int offset_theta = 117;
+    static const unsigned int offset_psi   = 125;
+
+    /*
+     *  Other offset, for posterity's sake:
+     * 
+     * Mach           9
+     * VVI           17
+     * pdot          49
+     * qdot          45
+     * rdot          53
+     * maghdg       129
+     * compasshdg   133
+     * mavar        145
+     * alpha        153
+     * beta         157
+     * hpath        161
+     * vpath        165
+     * slip         181
+     */
 };
 
 
@@ -157,7 +179,7 @@ class xplaneSocket
     //C++11 thread object for the recv thread (fancy fd sort of thing)
     std::thread recvThread;
     //Output buffers
-    MCISvector sfBuffer{0, 0, 9.81}, angBuffer{0, 0, 0};
+    MCISvector sfBuffer{0, 0, gravity}, angvBuffer{0, 0, 0}, attBuffer{0, 0, 0};
 
     //The function that loops around, receiving.
     void recvThreadFunc();
@@ -172,7 +194,8 @@ class xplaneSocket
     //~xplaneSocket();
 
     void stop();
-    void getData(MCISvector& spForces, MCISvector& angVelocities);
+    void getData(MCISvector& spForces, MCISvector& angVelocities,
+                    MCISvector& attitude);
 
 
 

@@ -34,3 +34,4 @@ MCIS-offline
 lib/*
 testinputs/*.csv
 MCIS
+mdalog*.csv

@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <cstdint>
 #include <iostream>
+#include <istream>
 
 /*
  *  discreteBiquadSectionParams
@@ -202,5 +203,15 @@ class MCISconfig
      *  Total size: 4096 bytes.
      */
 
+
+    /*
+     *  Function declarations
+     */
+    MCISconfig();
+    MCISconfig(std::string filename);
+
+    bool load(std::string filename);
+
     void print(std::ostream& destination);
+
 };

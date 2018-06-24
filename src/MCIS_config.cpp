@@ -26,8 +26,40 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <iostream>
-#include "include/MCIS_config.h"
+#include "include/MCIS_config.h" 
 
+/*
+ *  Constructors
+ */
+
+//Default constructor - does nothing
+MCISconfig::MCISconfig()
+{}
+
+//Initialization constructor - loads and verifies a config file
+MCISconfig::MCISconfig(std::string filename)
+{
+    if (!load(filename))
+    {
+        std::runtime_error except(
+            "Failed to load MDA config\n");
+        throw except;
+    }
+}
+
+/*
+ *  Other functions
+ */
+
+bool MCISconfig::load(std::string filename)
+{
+    return true;
+}
+
+
+/*
+ *  Printer functions
+ */
 void MCISconfig::print(std::ostream& dest)
 {
     dest << "Printing MCIS configuration file:" << std::endl;

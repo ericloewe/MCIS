@@ -42,6 +42,11 @@
         "atomic": "cpp",
         "codecvt": "cpp",
         "*.ipp": "cpp",
-        "cassert": "cpp"
+        "cassert": "cpp",
+        "string": "cpp",
+        "unordered_map": "cpp",
+        "vector": "cpp",
+        "numeric": "cpp",
+        "optional": "cpp"
     }
 }

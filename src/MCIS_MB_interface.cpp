@@ -37,9 +37,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 mbinterface::mbinterface(uint16_t mb_send_port, uint16_t mb_recv_port, 
                          uint32_t mb_IP, uint16_t xp_recv_port, 
-                         MCISconfig mdaconfig, std::fstream& MDA_log) :
+                         MCISconfig mdaconfig, std::fstream& MDA_log,
+                         bool subtract_gravity) :
                          simSocket{xp_recv_port, XP9},
-                         mda{mdaconfig}
+                         mda{mdaconfig, subtract_gravity},
+                         subgrav{subtract_gravity}
 {
     send_sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -122,13 +124,14 @@ iface_status mbinterface::get_iface_status()
     return current_status;
 }
 
-void mbinterface::get_MDA_status(MCISvector& sf_in, MCISvector& angv_in, 
+void mbinterface::get_MDA_status(MCISvector& sf_in, MCISvector& angv_in, MCISvector& ang_in,
                         MCISvector& MB_pos_out, MCISvector& MB_rot_out)
 {
     //Mutex is locked here, to insure consistent reads
     std::lock_guard<std::mutex> lock(output_mutex);
     sf_in   = curr_acceleration_in;
     angv_in = curr_ang_velocity_in;
+    ang_in  = curr_attitude_in;
     MB_pos_out  = curr_pos_out;
     MB_rot_out  = curr_rot_out; 
     //Mutex is unlocked here, as the lock guard is destructed at the end of its scope
@@ -317,13 +320,13 @@ void mbinterface::mb_send_func()
         {
             //Lock the mutex
             std::lock_guard<std::mutex> lock(output_mutex);
-            simSocket.getData(curr_acceleration_in, curr_ang_velocity_in);
-            mda.nextSample(curr_acceleration_in, curr_ang_velocity_in);
+            simSocket.getData(curr_acceleration_in, curr_ang_velocity_in, curr_attitude_in);
+            mda.nextSample(curr_acceleration_in, curr_ang_velocity_in, curr_attitude_in);
             curr_pos_out = mda.getPos();
             curr_rot_out = mda.getangle();
             //Mutex is unlocked here, as the lock guard is destructed due to end of scope
             write_MDA_log(*MDA_logfile, curr_acceleration_in, curr_ang_velocity_in,
-                            curr_pos_out, curr_rot_out);
+                            curr_attitude_in, curr_pos_out, curr_rot_out);
         }
 
         /*Clamp outputs down and offset them if needed (z)*/

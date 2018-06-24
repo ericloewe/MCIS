@@ -32,7 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream> 
 #include "MCIS_config.h"
 
-#define gravity 9.81
+#define gravity 9.80665
 
 
 /*
@@ -359,6 +359,24 @@ class MCISmatrix: public genericVector
      */
     void transpose();
 
+    /*
+     *  Calculate the Direction Cosines MAtrix for ZYX rotation
+     * 
+     * The reader of the above description is naturally left with a number 
+     * of questions. Let's address them:
+     * 
+     * Why do we need the DCM?
+     * - The DCM allows us to rotate our frame of reference to body axes
+     *   from pseudo-inertial (Earth-fixed) axes. This allows us to subtract 
+     *   the gravity vector, which is trivial in inertial axes, from the
+     *   acceleration vector, which is written in body axes.
+     * 
+     * Why ZYX and not XYZ or another rotation?
+     * - Roll, Pitch and Yaw are defined as a ZYX rotation, as this makes
+     *   a zero rotation correspond to "level" attitude.
+     */
+    void euler2DCM_ZYX(const MCISvector& eulerAngles);
+    
     /*
      *  Calculate the inverse Direction Cosines Matrix for ZYX rotation
      * 

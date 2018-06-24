@@ -55,9 +55,11 @@ class mbinterface
     private:
     
     bool continue_operation = true;
+
+    bool subgrav;
     
     MCISvector curr_pos_out, curr_rot_out;
-    MCISvector curr_acceleration_in, curr_ang_velocity_in;
+    MCISvector curr_acceleration_in, curr_ang_velocity_in, curr_attitude_in;
     const MCISvector init_pos_out{MB_OFFSET_x, MB_OFFSET_y, MB_OFFSET_z};
     const MCISvector init_rot_out{MB_OFFSET_roll, MB_OFFSET_pitch, MB_OFFSET_yaw};
     //The rate limits are defined per sample
@@ -150,7 +152,7 @@ class mbinterface
     
     mbinterface(uint16_t mb_send_port, uint16_t mb_recv_port, uint32_t mb_IP,
                 uint16_t xp_recv_port, MCISconfig mdaconfig, 
-                std::fstream& MDA_log);
+                std::fstream& MDA_log, bool subtract_gravity);
     //~mbinterface();
 
     void setEngage();
@@ -163,7 +165,7 @@ class mbinterface
 
     unsigned int get_MB_status();
     iface_status get_iface_status();
-    void get_MDA_status(MCISvector& sf_in, MCISvector& angv_in, 
+    void get_MDA_status(MCISvector& sf_in, MCISvector& angv_in, MCISvector& ang_in,
                         MCISvector& MB_pos_out, MCISvector& MB_rot_out);
 
 };

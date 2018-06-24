@@ -39,20 +39,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*
  *  readMCISinputs
  * 
- * Reads a set of six doubles to serve as inputs for MCIS
- * X,Y,Z acceleration, roll, pitch, yaw rates
+ * Reads a set of nine doubles to serve as inputs for MCIS
+ * X,Y,Z acceleration, roll, pitch, yaw rates, roll, pitch, yaw angles
  * 
  * Returns true on success and false on failure
  */
-bool readMCISinputs(std::istream& infile, MCISvector& accIn, MCISvector& angIn)
+bool readMCISinputs(std::istream& infile, MCISvector& accIn, MCISvector& angvIn, MCISvector& angIn)
 {
     std::string stringbuffer;
 
     int i;
-    double buffer[] = {0,0,0,0,0,0};
+    double buffer[] = {0,0,0,0,0,0,0,0,0};
 
     /*
-     *  There are 6 elements, yet we stop at 5, not 6. This is because
+     *  There are 9 elements, yet we stop at 8, not 9. This is because
      * getline(), when given a specific delimiter to work with, will *ignore*
      * \n. This breaks things.
      * 
@@ -61,7 +61,7 @@ bool readMCISinputs(std::istream& infile, MCISvector& accIn, MCISvector& angIn)
      * Yes, this is a pain in the ass. Yes, it's probably easier with the 
      * C standard library. *sigh*
      */
-    for (i = 0; i < 5; i++)
+    for (i = 0; i < 8; i++)
     {
         if (std::getline(infile, stringbuffer, ','))
         {
@@ -73,15 +73,15 @@ bool readMCISinputs(std::istream& infile, MCISvector& accIn, MCISvector& angIn)
         }
     }
 
-    if (i != 5) //We failed if we read less than 5 elements by now
-    {           //We compare against 5 because i is incremented after the loop runs
+    if (i != 8) //We failed if we read less than 8 elements by now
+    {           //We compare against 8 because i is incremented after the loop runs
         return false;
     }
 
     //Now we can deal with the last element of the row...
     if (std::getline(infile, stringbuffer)) //No delimiter == \n
     {
-        buffer[5] = stod(stringbuffer, nullptr);
+        buffer[8] = stod(stringbuffer, nullptr);
     }
     else
     {
@@ -89,7 +89,8 @@ bool readMCISinputs(std::istream& infile, MCISvector& accIn, MCISvector& angIn)
     }
 
     accIn.assign(buffer[0], buffer[1], buffer[2]);
-    angIn.assign(buffer[3], buffer[4], buffer[5]);
+    angvIn.assign(buffer[3], buffer[4], buffer[5]);
+    angIn.assign(buffer[6], buffer[7], buffer[8]);
     return true;
 }
 
@@ -175,10 +176,11 @@ void writeMCISfullOutputs(std::ostream& outfile,
 void write_MDA_log(std::ostream& outfile,
                     const MCISvector& acc_in,
                     const MCISvector& angv_in,
+                    const MCISvector& ang_in,
                     const MCISvector& pos_out,
                     const MCISvector& ang_out)
 {
-    writeBaseMCISoutputs(outfile, acc_in, angv_in);
+    writeMCISfullOutputs(outfile, acc_in, angv_in, ang_in);
     outfile << ",";
     writeBaseMCISoutputs(outfile, pos_out, ang_out);
     outfile << std::endl;

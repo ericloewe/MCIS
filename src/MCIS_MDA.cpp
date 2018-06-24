@@ -46,15 +46,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * to the member class constructors and sets the gains for the input scaling
  * again using the config reference.
  */
-MCIS_MDA::MCIS_MDA(const MCISconfig& config)
-    :   angleBlock{config},
+MCIS_MDA::MCIS_MDA(const MCISconfig& config, bool subtract_gravity)
+    :   subgrav{subtract_gravity},
+        angleBlock{config},
         tiltBlock{config},
-        posBlock{config},
+        posBlock{config, subtract_gravity},
         posOut{0,0,0},
         angleOut{0,0,0},
         angleNoTCout{0,0,0},
         accInput{0,0,0},
-        angInput{0,0,0},
+        angvInput{0,0,0},
         kX{config.K_SF_x},
         kY{config.K_SF_y},
         kZ{config.K_SF_z},
@@ -71,39 +72,51 @@ MCIS_MDA::MCIS_MDA(const MCISconfig& config)
  * Theory of operation / signal path:
  * 
  * 1) - NOT IMPLEMENTED YET - Linear acceleration is offset from CG
- * 2) Inputs are scaled
- * 3) Scaled angular velocities from 2) are used as input for the 
+ * 2) Subtract gravity
+ * 3) Inputs are scaled
+ * 4) Scaled angular velocities from 2) are used as input for the 
  *      Motion Base Orientation block, angleBlock, by calling
  *      angleBlock.nextSample().
  *      Feedback of the last iteration's angle output is used.
  *      The output is stored in angleNoTCout
- * 4) The previous iteration's angle output is fed into the Tilt Coordination Block,
+ * 5) The previous iteration's angle output is fed into the Tilt Coordination Block,
  *      tiltBlock, to be used along with the scaled linear accelerations from 
  *      2) in tiltBlock.nextSample().
  *      The output is stored in angleOut.
- * 5) The output of tiltBlock from 4) is used along with the scaled linear 
+ * 6) The output of tiltBlock from 4) is used along with the scaled linear 
  *      accelerations from 2) as the input for the Motion Base Position block,
  *      posBlock, specifically posBlock.nextSample()
  *      The output is stored in posOut.
  * 
  * All outputs can be later retrieved using the getter functions.
  */
-void MCIS_MDA::nextSample(const MCISvector& accelerations, const MCISvector& angularVelocities)
+void MCIS_MDA::nextSample(const MCISvector& accelerations, const MCISvector& angularVelocities,
+                          const MCISvector& attitude)
 {
-    accInput = accelerations;
-    angInput = angularVelocities;
+    accInput  = accelerations;
+    angvInput = angularVelocities;
+    attInput  = attitude;
+    // 1) Subtract gravity, if required
+    if (subgrav)
+    {
+        MCISvector gravVector{0, 0, gravity};
+        MCISmatrix DCM;
+        DCM.euler2DCM_ZYX(attInput);
+        gravVector = DCM * gravVector;
+        accInput -= gravVector;
+    } 
     
-    // 2) Scale inputs
+    // 3) Scale inputs
     accInput.applyScalarGains(kX, kY, kZ);
-    angInput.applyScalarGains(kp, kq, kr);
+    angvInput.applyScalarGains(kp, kq, kr);
 
-    // 3) Calculate the Motion Base position from the angular velocity input
-    angleNoTCout = angleBlock.nextSample(angInput, angleOut);
+    // 4) Calculate the Motion Base position from the angular velocity input
+    angleNoTCout = angleBlock.nextSample(angvInput, angleOut);
 
-    // 4) Calculate Tilt Coordination using known MB orientation and acceleration input
+    // 5) Calculate Tilt Coordination using known MB orientation and acceleration input
     angleOut = tiltBlock.nextSample(accInput, angleOut, angleNoTCout);
 
-    // 5) Calculate the Motion Base position from the acceleration input
+    // 6) Calculate the Motion Base position from the acceleration input
     posOut = posBlock.nextSample(accInput, angleOut);
 }
 
@@ -138,14 +151,14 @@ void MCIS_MDA::nextSample(const MCISvector& accelerations, const MCISvector& ang
 void MCIS_MDA::nextSample_MCISv2(const MCISvector& accelerations, const MCISvector& angularVelocities)
 {
     accInput = accelerations;
-    angInput = angularVelocities;
+    angvInput = angularVelocities;
     
     // 2) Scale inputs
     accInput.applyScalarGains(kX, kY, kZ);
-    angInput.applyScalarGains(kp, kq, kr);
+    angvInput.applyScalarGains(kp, kq, kr);
 
     // 3) Calculate the Motion Base position from the angular velocity input
-    angleNoTCout = angleBlock.nextSample_MCISv2(angInput);
+    angleNoTCout = angleBlock.nextSample_MCISv2(angvInput);
 
     // 4) Calculate Tilt Coordination using known MB orientation and acceleration input
     angleOut = tiltBlock.nextSample_MCISv2(accInput, angleOut);
@@ -349,7 +362,7 @@ MCISvector angHPchannel::nextSample_MCISv2(const MCISvector& input)
  * Takes an MCISconfig reference and constructs its members
  * using members of the MCISconfig instance
  */
-posHPchannel::posHPchannel(const MCISconfig& config)
+posHPchannel::posHPchannel(const MCISconfig& config, bool subtract_gravity)
     :   xFilt1{config.filt_SF_HP_x_disc.biquads[0]},
         yFilt1{config.filt_SF_HP_y_disc.biquads[0]},
         zFilt1{config.filt_SF_HP_z_disc.biquads[0]},
@@ -361,7 +374,8 @@ posHPchannel::posHPchannel(const MCISconfig& config)
         zFiltK{config.filt_SF_HP_z_disc.biquads[0].gain},
         xSat{config.lim_SF_x, 0},
         ySat{config.lim_SF_y, 0},
-        zSat{config.lim_SF_z, 0}
+        zSat{config.lim_SF_z, 0},
+        subgrav{subtract_gravity}
 {
     zGravSub = gravity * config.K_SF_z;
 }
@@ -377,8 +391,9 @@ posHPchannel::posHPchannel(const MCISconfig& config)
  *      calculated before this function is called 
  *      (inclusive of Tilt Coordination).
  * 2) The vector is split  up into its three components
- * 3) Gravity is subtracted from the Z axis to bring it down to the 
+ * 3*) Gravity is subtracted from the Z axis to bring it down to the 
  *      [-limit ; limit] range.
+ *      ONLY IF GRAVITY IS NOT BEING SUBTRACTED IN THE BODY FRAME
  * 4) Inputs are clamped down to their limits (saturation)
  * 5) Each element is used as the input for the 
  *      the respective filter (which includes the integrator)
@@ -397,8 +412,11 @@ MCISvector posHPchannel::nextSample(const MCISvector& input, const MCISvector& M
     double yChannel = sf.getVal(1);
     double zChannel = sf.getVal(2);
 
-    // 3) Subtract gravity in the Z-axis
-    zChannel -= zGravSub;
+    // 3) Subtract gravity in the Z-axis, if needed
+    if (!subgrav)
+    {
+        zChannel -= zGravSub;
+    }
 
     // 4) Apply saturation
     xChannel = xSat.nextSample(xChannel);
@@ -480,8 +498,8 @@ MCISvector tiltCoordination::nextSample(const MCISvector& input, const MCISvecto
     yChannel = ySat.nextSample(yChannel);
 
     // 4) Apply TC gain
-    xChannel *= xGain;
-    yChannel *= yGain;
+    xChannel *=  xGain;
+    yChannel *= -yGain; //Positive y acceleration means negative roll
 
     // 5) Run through the filters
     xChannel = xFiltK * xFilt.nextSample(xChannel);

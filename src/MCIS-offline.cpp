@@ -105,14 +105,14 @@ int main (int argc, char **argv)
             continue;
         }
 
-        MCIS_MDA mda{config};
+        MCIS_MDA mda{config, true};
 
-        MCISvector sfIn, angIn, posOut, angOut;
+        MCISvector sfIn, angIn, attIn, posOut, angOut;
 
         //while (readMCISinputs(infile, sfIn, angIn))
-        while (readMCISinputs(infile, sfIn, angIn))
+        while (readMCISinputs(infile, sfIn, angIn, attIn))
         {
-            mda.nextSample(sfIn, angIn);
+            mda.nextSample(sfIn, angIn, attIn);
             writeMCISfullOutputs(outfile, mda.getPos(), mda.getangle(), mda.getAngleNoTC());
             //writeMCISfullOutputsBin(outfile, mda.getPos(), mda.getangle(), mda.getAngleNoTC());
         }

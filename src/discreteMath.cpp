@@ -1026,6 +1026,65 @@ void MCISmatrix::transpose()
     this -> elements[7] = temp;                 // and h holds f
 }
 
+
+/*
+*  Calculate the Direction Cosines MAtrix for ZYX rotation
+* 
+* The reader of the above description is naturally left with a number 
+* of questions. Let's address them:
+* 
+* Why do we need the DCM?
+* - The DCM allows us to rotate our frame of reference to body axes
+*   from pseudo-inertial (Earth-fixed) axes. This allows us to subtract 
+*   the gravity vector, which is trivial in inertial axes, from the
+*   acceleration vector, which is written in body axes.
+* 
+* Why ZYX and not XYZ or another rotation?
+* - Roll, Pitch and Yaw are defined as a ZYX rotation, as this makes
+*   a zero rotation correspond to "level" attitude.
+*/
+void MCISmatrix::euler2DCM_ZYX(const MCISvector& eulerAngles)
+{
+    /*
+     *  We need the sine and cosine of every element of eulerAngles,
+     *  and we need them repeatedly. We'll pre-calculate these first,
+     *  then do the rest of the work in a vectorization-friendly manner. 
+     */
+
+    double sPhi, sTheta, sPsi, cPhi, cTheta, cPsi;
+
+    sPhi    = sin(eulerAngles.getVal(0));
+    sTheta  = sin(eulerAngles.getVal(1));
+    sPsi    = sin(eulerAngles.getVal(2));
+
+    cPhi    = cos(eulerAngles.getVal(0));
+    cTheta  = cos(eulerAngles.getVal(1));
+    cPsi    = cos(eulerAngles.getVal(2));
+
+    /*
+    *  Now we can assign the matrix elements
+    * 
+    * Remember that we're in Row-Column order:
+    * 
+    * | 0 1 2 |
+    * | 3 4 5 |
+    * | 6 7 8 |
+    * 
+    * Also, don't forget that we're assigning the transpose.
+    */
+    this -> elements[0] = cTheta * cPsi;
+    this -> elements[3] = sPhi*sTheta*cPsi - cPhi*sPsi; 
+    this -> elements[6] = cPhi*sTheta*cPsi + sPhi*sPsi;
+
+    this -> elements[1] = cTheta*sPsi;
+    this -> elements[4] = sPhi*sTheta*sPsi + cPhi*cPsi;
+    this -> elements[7] = cPhi*sTheta*sPsi - sPhi*cPsi;
+
+    this -> elements[2] = - sTheta;
+    this -> elements[5] = sPhi * cTheta;
+    this -> elements[8] = cPhi * cTheta;
+}
+
 /*
 *  Calculate the inverse Direction Cosines Matrix for ZYX rotation
 * 
