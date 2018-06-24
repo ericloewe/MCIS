@@ -95,9 +95,10 @@ int main(int argc, char *argv[])
      */
     std::string filename = MDA_LOGNAME;
     std::string fileext  = MDA_LOGEXT;
+    std::string filepath;
     for (int i = 1; ; i++)
     {
-        std::string filepath = filename + std::to_string(i) + fileext;
+        filepath = filename + std::to_string(i) + fileext;
         MDA_log.open(filepath, std::fstream::in);
         if (!MDA_log)
         {
@@ -117,10 +118,12 @@ int main(int argc, char *argv[])
     
     if (!MDA_log.good())
     {
-        std::cout << "Failed to open MDA logfile: " << MDA_LOGNAME << std::endl;
+        std::cout << "Failed to open MDA logfile: " << filepath << std::endl;
         MDA_log.close();
         return 0;
     }
+
+    std::cout << "Using MDA logfile: " << filepath << std::endl;
     
     struct sigaction sig;
 

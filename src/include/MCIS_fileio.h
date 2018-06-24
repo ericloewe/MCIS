@@ -53,6 +53,17 @@ bool readMCISinputs(std::istream& infile,
 bool readMCISinputsBin(std::istream& infile, MCISvector& accIn, MCISvector& angIn);
 
 /*
+ *  writeMCISinputs
+ * 
+ * Writes a set of nine doubles from the MCIS input
+ * X,Y,Z acceleration, roll, pitch, yaw rate, roll, pitch, yaw angle 
+ */
+void writeMCISinputs(std::ostream& outfile, 
+                    const MCISvector& accIn, 
+                    const MCISvector& angIn,
+                    const MCISvector& attIn);
+
+/*
  *  writeMCISoutputs
  * 
  * Writes a set of six doubles from the MCIS output

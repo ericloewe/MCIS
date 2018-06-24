@@ -120,6 +120,22 @@ bool readMCISinputsBin(std::istream& infile, MCISvector& accIn, MCISvector& angI
 }
 
 /*
+ *  writeMCISinputs
+ * 
+ * Writes a set of nine doubles from the MCIS input
+ * X,Y,Z acceleration, roll, pitch, yaw rate, roll, pitch, yaw angle 
+ */
+void writeMCISinputs(std::ostream& outfile, 
+                    const MCISvector& accIn, 
+                    const MCISvector& angIn,
+                    const MCISvector& attIn)
+{
+    outfile << accIn.getVal(0) << ',' << accIn.getVal(1) << ',' << accIn.getVal(2) << ',';
+    outfile << angIn.getVal(0) << ',' << angIn.getVal(1) << ',' << angIn.getVal(2) << ',';
+    outfile << attIn.getVal(0) << ',' << attIn.getVal(1) << ',' << attIn.getVal(2);
+}
+
+/*
  *  writeMCISoutputs
  * 
  * Writes a set of six doubles from the MCIS output
@@ -180,7 +196,7 @@ void write_MDA_log(std::ostream& outfile,
                     const MCISvector& pos_out,
                     const MCISvector& ang_out)
 {
-    writeMCISfullOutputs(outfile, acc_in, angv_in, ang_in);
+    writeMCISinputs(outfile, acc_in, angv_in, ang_in);
     outfile << ",";
     writeBaseMCISoutputs(outfile, pos_out, ang_out);
     outfile << std::endl;
