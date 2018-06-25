@@ -80,9 +80,11 @@ class mbinterface
     std::thread MB_send_thread;
 
     unsigned long int send_ticks = 1;
-    unsigned long int ticks_per_tock = 2;
-    unsigned long int engage_timeout_period     = 1200;
-    unsigned long int rate_limit_timeout_period = 1200;
+    const unsigned long int ticks_per_tock = 2;
+    const unsigned long int engage_timeout_period     = 
+        MB_ENGAGE_TIMEOUT_SECONDS * ticks_per_tock * MB_SAMPLE_RATE;
+    const unsigned long int rate_limit_timeout_period = 
+        RATE_LIM_TIMEOUT_SECONDS * ticks_per_tock * MB_SAMPLE_RATE;
 
     unsigned long int state_start; 
     //int DOF_mode_ticks = 60;

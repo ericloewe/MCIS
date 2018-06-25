@@ -40,7 +40,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* Time needed to engage, based on observation, in seconds */
 #define MB_ENGAGE_TIME 11
 /* Engage timeout, to allow the MB to engage, in seconds */
-#define MB_ENGAGE_TIMEOUT 15
+#define MB_ENGAGE_TIMEOUT_SECONDS 20
+#define RATE_LIM_TIMEOUT_SECONDS 20
 
 /* Motion Command Word definitions */
 #define MCW_DISABLE         220
