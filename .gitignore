@@ -25,3 +25,14 @@ testinputsbin/*
 *.o
 testinputs5/*
 mdalog.csv
+mbtest
+cmake_install.cmake
+Makefile
+cmakefiles/*
+cmakefiles
+CMakeCache.txt
+MCIS-offline
+lib/*
+testinputs/*.csv
+MCIS
+mdalog*.csv
