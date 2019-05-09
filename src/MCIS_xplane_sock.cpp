@@ -30,16 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <unistd.h>
 #include <math.h>
 #include "include/MCIS_xplane_sock.h"
-
-
-
-
-
-
-
-
-
-
+#include "include/MCIS_util.h"
 
 
 /*
@@ -186,27 +177,28 @@ void xplaneSocket::recvThreadFunc()
  */
 void xplaneSocket::interpretXP9msg()
 {
+    //We're not touching angular accelerations yet
+    //They're weird in X-Plane 11 and we don't have an offset position anyway
+    //so we just ignore them for now.
     double xSf, ySf, zSf, p, q, r, phi, theta, psi;
 
-    xSf = *(float *) (msgPointer + xplane9msg::offset_sfX);
-    ySf = *(float *) (msgPointer + xplane9msg::offset_sfY);
-    zSf = *(float *) (msgPointer + xplane9msg::offset_sfZ);
+    //X-Plane annoyingly sends little-endian data, so we ironically have more trouble
+    //than if they just used big-endian in the first place, even though we mostly
+    //run on little-endian systems
+    xSf = floatLEToHost(*(float *) (msgPointer + xplane9msg::offset_sfX));
+    ySf = floatLEToHost(*(float *) (msgPointer + xplane9msg::offset_sfY));
+    zSf = floatLEToHost(*(float *) (msgPointer + xplane9msg::offset_sfZ));
 
-    p   = *(float *) (msgPointer + xplane9msg::offset_p);
-    q   = *(float *) (msgPointer + xplane9msg::offset_q);
-    r   = *(float *) (msgPointer + xplane9msg::offset_r);
+    p   = floatLEToHost(*(float *) (msgPointer + xplane9msg::offset_p));
+    q   = floatLEToHost(*(float *) (msgPointer + xplane9msg::offset_q));
+    r   = floatLEToHost(*(float *) (msgPointer + xplane9msg::offset_r));
 
-    phi   = *(float *) (msgPointer + xplane9msg::offset_phi);
-    theta = *(float *) (msgPointer + xplane9msg::offset_theta);
-    psi   = *(float *) (msgPointer + xplane9msg::offset_psi);
+    phi   = floatLEToHost(*(float *) (msgPointer + xplane9msg::offset_phi));
+    theta = floatLEToHost(*(float *) (msgPointer + xplane9msg::offset_theta));
+    psi   = floatLEToHost(*(float *) (msgPointer + xplane9msg::offset_psi));
 
-    #ifdef SYSTEM_IS_BIG_ENDIAN
+    //Angular accelerations would go here.
 
-        //Ooops
-        std::logic_error except("Big-endian systems are not yet supported!\n");
-        throw except;
-
-    #endif //SYSTEM_IS_BIG_ENDIAN
 
     /*
      *  Accelerations are in g  and need to be converted to m/s^2

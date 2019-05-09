@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ncurses.h>
 #include <signal.h>
 #include "include/MCIS_MB_interface.h"
+#include "include/MCIS_config.h"
 
 /* All this stuff is going into a config file */
 //#define MB_IP 0x807F3778 //Old IP, 128.127.55.120
@@ -54,11 +55,7 @@ void sig_handler(int signo);
 
 int main(int argc, char *argv[])
 {
-    
-    
     MCISconfig config;
-    char *fileIn = (char *)&config;
-    std::ifstream configFile;
     std::fstream MDA_log;
     bool subgrav = true;
 
@@ -71,21 +68,8 @@ int main(int argc, char *argv[])
         }
     }
     
-    //TODO - Proper config treatment
-    //Try to open the config file...
-    configFile.open(configFileName, std::ios_base::binary);
-    if (!configFile.good())
-    {
-        std::cout << "Error opening config file " << configFileName << std::endl;
-        return 0;
-    }
-    //And try to read it.
-    configFile.read(fileIn, sizeof(MCISconfig));
-    if (configFile.gcount() != sizeof(MCISconfig))
-    {
-        std::cout << "Config file truncated! Cannot start MCIS using config file " << configFileName << std::endl;
-        return 0;
-    }
+    config.load(configFileName);
+
     std::cout << "Configuration loaded." << std::endl;
 
     /*
@@ -318,7 +302,6 @@ int main(int argc, char *argv[])
 
     std::cout << "Threads should be joining now..." << std::endl;
     
-    configFile.close();
     MDA_log.close();
     
     return 0;

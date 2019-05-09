@@ -32,8 +32,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include <cstdint>
-#include <string.h>
-#include <arpa/inet.h>
 
 /*
  *  floatNetToHost
@@ -41,19 +39,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * Convert a 32-bit float from Network byte order to Host byte order
  * 
  */
-float floatNetToHost(uint32_t bigEndianFloat)
-{
-    /*uint8_t value[4] = {};
-    memcpy(&value, &bigEndianFloat, 4);
+float floatNetToHost(uint32_t netFloat);
 
-    uint32_t hostVal = ((uint32_t) value[3] << 0)
-                    |  ((uint32_t) value[2] << 8)
-                    |  ((uint32_t) value[1] << 16)
-                    |  ((uint32_t) value[0] << 24);*/
-    uint32_t hostVal = ntohl(bigEndianFloat);
-    float *convFloat = reinterpret_cast<float *>(hostVal);
-    return *convFloat;
-}
+/*
+ *  floatLEToHost
+ * 
+ * Convert a 32-bit float from little-endian to Host byte order
+ * 
+ */
+float floatLEToHost(uint32_t LEFloat);
 
 /*
  *  floatHostToNet
@@ -61,8 +55,20 @@ float floatNetToHost(uint32_t bigEndianFloat)
  * Convert a 32-bit float from Network byte order to Host byte order
  * 
  */
-uint32_t floatHostToNet(float hostFloat)
-{
-    uint32_t hostVal = *(reinterpret_cast<uint32_t *>(&hostFloat));
-    return htonl(hostVal);
-}
+uint32_t floatHostToNet(float hostFloat);
+
+/*
+ *  doubleNetToHost
+ * 
+ *  Convert a 64-bit double from Network byte order to Host byte order
+ *
+ */
+double doubleNetToHost(double netDouble);
+
+/*
+ *  doubleNetToHost
+ * 
+ *  Convert a 64-bit double from Network byte order to Host byte order
+ *
+ */
+double doubleNetToHost(uint64_t netDouble);

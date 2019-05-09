@@ -12,6 +12,8 @@
  * notice must not be changed or removed and no warranty is either
  * expressed or implied by its publication or distribution.
  **********************************************************************/
+#pragma once
+#include <stdint.h>
 
 #ifndef _crc_h
 #define _crc_h
@@ -23,7 +25,7 @@
 /*
  * Select the CRC standard from the list that follows.
  */
-#define CRC_CCITT
+#define CRC32
 
 
 #if defined(CRC_CCITT)
@@ -52,7 +54,7 @@ typedef unsigned short  crc;
 
 #elif defined(CRC32)
 
-typedef unsigned long  crc;
+typedef uint32_t  crc;
 
 #define CRC_NAME			"CRC-32"
 #define POLYNOMIAL			0x04C11DB7

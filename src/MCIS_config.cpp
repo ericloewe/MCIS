@@ -24,10 +24,16 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 */
-
+#include <cstdint>
 #include <iostream>
+#include <cstdio>
+#include <cstring>
+#include <arpa/inet.h>
 #include "include/MCIS_config.h" 
-
+#include "include/MCIS_util.h"
+extern "C" {
+#include "include/crc.h"
+}
 /*
  *  Constructors
  */
@@ -39,23 +45,191 @@ MCISconfig::MCISconfig()
 //Initialization constructor - loads and verifies a config file
 MCISconfig::MCISconfig(std::string filename)
 {
-    if (!load(filename))
+    load(filename);
+    /*if (!load(filename))
     {
         std::runtime_error except(
             "Failed to load MDA config\n");
         throw except;
-    }
+    }*/
 }
 
 /*
  *  Other functions
  */
 
-bool MCISconfig::load(std::string filename)
+/*
+ *  load a config file into this object
+ */
+void MCISconfig::load(std::string filename)
 {
-    return true;
+    uint8_t buffer[sizeof(MCISconfig)];
+
+    FILE *infileFD = fopen(filename.c_str(), "rb");
+
+    //We need to ensure the file is okay
+    //First step is to see if we can even read from it
+    if (infileFD == NULL)
+    {
+        std::runtime_error except(
+            "Failed to open MDA config file\n");
+        throw except;
+    }
+
+    //Second, read in the file and check if the size is right
+    int bytes = fread((void *)&buffer, 1, sizeof(MCISconfig), infileFD);
+    if (bytes != sizeof(MCISconfig))
+    {
+        std::runtime_error except(
+            "Failed to read all of the MDA config file! It may be truncated...\n");
+        throw except;
+    }
+    fclose(infileFD);
+
+    //Third, run the CRC and check it against the stored one
+    crc inFileCRC = crcSlow((unsigned char *)buffer, CRC_POSITION);
+    crc storedCRC;
+    memcpy((void *)&storedCRC, (void *)(buffer + CRC_POSITION), sizeof(uint32_t));
+    storedCRC = ntohl(storedCRC);   //Handle endianness if necessary
+    if (storedCRC != inFileCRC)
+    {
+        std::runtime_error except(
+            "MDA config file has invalid CRC32!\n");
+        throw except;
+    }
+
+    //Fourth and finally, make sure the version is supported
+    //For now, we only support version 5
+    char fileHeader[16];
+    memcpy((void *)fileHeader, (void *)(buffer), 16);
+    if (strncasecmp(fileHeader, "MCIS v05 CONFIG ", 16) != 0)
+    {
+        std::runtime_error except(
+            "Unsupported config file version, must be v05 (or bad header)\n");
+        throw except;
+    }
+
+    //Now we can read all the stuff in.
+    //We cheese things a bit by casting a pointer to the buffer to MCISconfig*
+    //This avoids keeping track of offsets manually
+    MCISconfig *readConfig = (MCISconfig *)buffer;
+
+    //memcpy the header over for the sake of completeness
+    memcpy((void *)this -> configHeader, readConfig -> configHeader, 28);
+
+    this -> sampleRate = ntohl(readConfig -> sampleRate);
+
+    this -> K_SF_x = doubleNetToHost(readConfig -> K_SF_x);
+    this -> K_SF_y = doubleNetToHost(readConfig -> K_SF_y);
+    this -> K_SF_z = doubleNetToHost(readConfig -> K_SF_z);
+
+    this -> K_p = doubleNetToHost(readConfig -> K_p);
+    this -> K_q = doubleNetToHost(readConfig -> K_q);
+    this -> K_r = doubleNetToHost(readConfig -> K_r);
+
+    this -> lim_SF_x = doubleNetToHost(readConfig -> lim_SF_x);
+    this -> lim_SF_y = doubleNetToHost(readConfig -> lim_SF_y);
+    this -> lim_SF_z = doubleNetToHost(readConfig -> lim_SF_z);
+
+    this -> lim_p = doubleNetToHost(readConfig -> lim_p);
+    this -> lim_q = doubleNetToHost(readConfig -> lim_q);
+    this -> lim_r = doubleNetToHost(readConfig -> lim_r);
+
+    this -> K_TC_x = doubleNetToHost(readConfig -> K_TC_x);
+    this -> K_TC_y = doubleNetToHost(readConfig -> K_TC_y);
+
+    this -> lim_TC_x = doubleNetToHost(readConfig -> lim_TC_x);
+    this -> lim_TC_y = doubleNetToHost(readConfig -> lim_TC_y);
+
+    this -> ratelim_TC_x = doubleNetToHost(readConfig -> ratelim_TC_x);
+    this -> ratelim_TC_y = doubleNetToHost(readConfig -> ratelim_TC_y);
+
+    //Now come the filters. Thankfully, there are functions for that
+    loadContinuousFiltParams(&this -> filt_SF_HP_x_cont, &readConfig -> filt_SF_HP_x_cont);
+    loadDiscreteFiltParams(&this -> filt_SF_HP_x_disc, &readConfig -> filt_SF_HP_x_disc);
+
+    loadContinuousFiltParams(&this -> filt_SF_HP_y_cont, &readConfig -> filt_SF_HP_y_cont);
+    loadDiscreteFiltParams(&this -> filt_SF_HP_y_disc, &readConfig -> filt_SF_HP_y_disc);
+
+    loadContinuousFiltParams(&this -> filt_SF_HP_z_cont, &readConfig -> filt_SF_HP_z_cont);
+    loadDiscreteFiltParams(&this -> filt_SF_HP_z_disc, &readConfig -> filt_SF_HP_z_disc);
+
+    loadContinuousFiltParams(&this -> filt_SF_LP_x_cont, &readConfig -> filt_SF_LP_x_cont);
+    loadDiscreteFiltParams(&this -> filt_SF_LP_x_disc, &readConfig -> filt_SF_LP_x_disc);
+
+    loadContinuousFiltParams(&this -> filt_SF_LP_y_cont, &readConfig -> filt_SF_LP_y_cont);
+    loadDiscreteFiltParams(&this -> filt_SF_LP_y_disc, &readConfig -> filt_SF_LP_y_disc);
+
+    loadContinuousFiltParams(&this -> filt_p_HP_cont, &readConfig -> filt_p_HP_cont);
+    loadDiscreteFiltParams(&this -> filt_p_HP_disc, &readConfig -> filt_p_HP_disc);
+
+    loadContinuousFiltParams(&this -> filt_q_HP_cont, &readConfig -> filt_q_HP_cont);
+    loadDiscreteFiltParams(&this -> filt_q_HP_disc, &readConfig -> filt_q_HP_disc);
+
+    loadContinuousFiltParams(&this -> filt_r_HP_cont, &readConfig -> filt_r_HP_cont);
+    loadDiscreteFiltParams(&this -> filt_r_HP_disc, &readConfig -> filt_r_HP_disc);
+
+    //We copy the CRC just for the sake of completeness
+    this -> CRC = ntohl(readConfig -> CRC);
+
+    //And finally we memcpy the comments
+    memcpy((void *)this -> comments, (void *)readConfig -> comments, 1100);
 }
 
+/*
+ *  loadContinuousFiltParams
+ * 
+ * Loads a continuous-time filter parameters structure, automagically converting 
+ * endianness if needed. 
+ */
+void loadContinuousFiltParams(continuousFiltParams *filt, continuousFiltParams *inbuf)
+{
+    filt -> filtOrder = inbuf -> filtOrder; //Single byte, not endian
+
+    memcpy((void *)filt -> description, (void *)inbuf -> description, 15);
+
+    for (int i = 0; i < 8; i++)
+    {
+        filt -> b[i] = doubleNetToHost(inbuf -> b[i]);
+        filt -> a[i] = doubleNetToHost(inbuf -> a[i]);
+    }
+}
+
+/*
+ *  loadDiscreteFiltParams
+ * 
+ * Loads a discrete-time filter parameters structure, automagically converting 
+ * endianness if needed. 
+ */
+void loadDiscreteFiltParams(discreteFiltParams *filt,  discreteFiltParams *inbuf)
+{
+    filt -> sectionsInUse = inbuf -> sectionsInUse; //Single byte, not endian
+
+    memcpy((void *)filt -> description, (void *)inbuf -> description, 15);
+
+    for (int i = 0; i < 4; i++)
+    {
+        loadDiscreteBiquadParams(&filt -> biquads[i], &inbuf -> biquads[i]);
+    }
+}
+
+/*
+ *  loadDiscreteBiquadParams
+ * 
+ * Loads a discrete-time filter biquad section parameters structure, automagically converting 
+ * endianness if needed. 
+ */
+void loadDiscreteBiquadParams(discreteBiquadSectionParams *sect, discreteBiquadSectionParams *inbuf)
+{
+    sect -> b0 = doubleNetToHost(inbuf -> b0);
+    sect -> b1 = doubleNetToHost(inbuf -> b1);
+    sect -> b2 = doubleNetToHost(inbuf -> b2);
+
+    sect -> a1 = doubleNetToHost(inbuf -> a1);
+    sect -> a2 = doubleNetToHost(inbuf -> a2);
+
+    sect -> gain = doubleNetToHost(inbuf -> gain); 
+}
 
 /*
  *  Printer functions

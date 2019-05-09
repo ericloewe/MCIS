@@ -49,9 +49,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 int main (int argc, char **argv)
 {
     MCISconfig config;
-    char *fileIn = (char *)&config;
 
-    std::ifstream configFile;
     std::ifstream inputFile;
     std::ofstream outputFile;
 
@@ -62,20 +60,7 @@ int main (int argc, char **argv)
         return 0;
     }
 
-    //Try to open the config file...
-    configFile.open(configFileName, std::ios_base::binary);
-    if (!configFile.good())
-    {
-        std::cout << "Error opening config file " << configFileName << std::endl;
-        return 0;
-    }
-    //And try to read it.
-    configFile.read(fileIn, sizeof(MCISconfig));
-    if (configFile.gcount() != sizeof(MCISconfig))
-    {
-        std::cout << "Config file truncated! Cannot start MCIS using config file " << configFileName << std::endl;
-        return 0;
-    }
+    config.load(configFileName);
     std::cout << "Configuration loaded." << std::endl;
 
     std::string path;

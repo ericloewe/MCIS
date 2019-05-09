@@ -36,3 +36,5 @@ lib/*
 testinputs/*.csv
 MCIS
 mdalog*.csv
+CMakeFiles
+CMakeFiles/*

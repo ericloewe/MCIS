@@ -31,6 +31,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream>
 #include <istream>
 
+#define CRC_POSITION 0xbb0
+
+/*
+ *  Note on endianness
+ * 
+ *  On-disk and for interchange purposes, NETWORK BYTE ORDER (BIG-ENDIAN) 
+ *  IS USED.
+ */
+
 /*
  *  discreteBiquadSectionParams
  * 
@@ -123,7 +132,7 @@ class MCISconfig
      * 
      * "MCIS vVV config YYYY-MM-DD \0" (28 chars)
      * 
-     * VV is the version. Current version is v3, so "v3 " (note the space)
+     * VV is the version. Current version is v5, so "v05" (note the zero)
      * YYYY-MM-DD is the date of generation in ISO 8601 format;
      */
     char configHeader[28];
@@ -192,12 +201,29 @@ class MCISconfig
      */
 
     /*
+     *  CRC32
+     * 
+     * We store a CRC32 to help ensure the file isn't corrupted.
+     * This is necessary because an out-of-control Motion Base could cause
+     * serious injuries and someone might be not using ZFS.
+     * 
+     * The CRC will *not* protect against malicious actors as it is vulnerable
+     * to collisions.
+     */
+    uint32_t CRC;
+
+    /*
+     *  sizeof(CRC) = 4
+     * Running Total: 2996 bytes
+     */
+
+    /*
      *  We add some padding to get a neat 4kB struct.
      * 
-     * It can be used for comments. 1104 chars should be enough 
+     * It can be used for comments. 1100 chars should be enough 
      * for most comments.
      */
-    char comments[1104];
+    char comments[1100];
 
     /*
      *  Total size: 4096 bytes.
@@ -210,8 +236,17 @@ class MCISconfig
     MCISconfig();
     MCISconfig(std::string filename);
 
-    bool load(std::string filename);
+    void load(std::string filename);
 
     void print(std::ostream& destination);
 
+    private:
+    //These functions are private because they do not check if the buffer they're given is good.
+
+    
+   
 };
+
+void loadContinuousFiltParams(continuousFiltParams *filt, continuousFiltParams *inbuf);
+void loadDiscreteFiltParams(discreteFiltParams *filt,  discreteFiltParams *inbuf);
+void loadDiscreteBiquadParams(discreteBiquadSectionParams *sect, discreteBiquadSectionParams *inbuf);
