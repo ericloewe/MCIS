@@ -27,10 +27,10 @@ target_link_libraries(MCIS_discreteMath MCIS_config)
 target_link_libraries(MCIS_config MCIS_crc MCIS_util)
 target_link_libraries(MCIS_fileio MCIS_discreteMath)
 target_link_libraries(MCIS_MDA MCIS_discreteMath MCIS_config)
-target_link_libraries(MCIS_xplane_sock MCIS_discreteMath MCIS_util -lpthread)
+target_link_libraries(MCIS_xplane_sock MCIS_discreteMath MCIS_util -pthread)
 
 target_link_libraries(MCIS_MB_interface MCIS_xplane_sock MCIS_MDA MCIS_fileio)
-target_link_libraries(MCIS_MB_interface MCIS_discreteMath MCIS_util -lpthread)
+target_link_libraries(MCIS_MB_interface MCIS_discreteMath MCIS_util -pthread)
 
 
 
