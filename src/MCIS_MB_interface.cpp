@@ -547,6 +547,7 @@ void mbinterface::mb_send_func_MB_RECOVERABLE_FAULT()
     if (userReset)
     {
         send_mb_neutral_command(MCW_RESET);
+        userReset = false;
     }
 }
 

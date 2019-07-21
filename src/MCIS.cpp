@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /* All this stuff is going into a config file */
 //#define MB_IP 0x807F3778 //Old IP, 128.127.55.120
-#define MB_IP 0xC0A81405
+#define MB_IP 0xC0A81405  //192.168.20.5 in hex
 #define MB_PORT 991    //CHANGE ME!
 #define LOCAL_PORT 10500 //CHANGE ME!
 #define XPLANE_RECV_PORT 49000 //CHANGE ME!
@@ -148,7 +148,8 @@ int main(int argc, char *argv[])
     {
         nextTick += sampleTime;
         clear();
-        mvprintw(1, 1, "E - Engage     R - Ready     O - Override    P - Park    Q - Exit");
+        //mvprintw(1, 1, "E - Engage     R - Ready     O - Override    P - Park    Q - Exit");
+        mvprintw(1, 1, "P - Park     Q - Exit");
         mvprintw(2, 5, "MB state: ");
         switch (motion_base.get_MB_status())
         {
@@ -203,12 +204,14 @@ int main(int argc, char *argv[])
                 break;
             case WAIT_FOR_ENGAGE:
                 printw("Waiting for user to engage               ");
+                mvprintw(4, 5, "Press E to send MB ENGAGE command.");
                 break;
             case ENGAGING:
                 printw("MB engaging, please wait...              ");
                 break;
             case WAIT_FOR_READY:
                 printw("MB engaged. Waiting for user ready signal");
+                mvprintw(4, 5, "Press R to initiate motion.");
                 break;
             case RATE_LIMITED:
                 printw("Engaged - Output is rate limited         ");
@@ -224,6 +227,7 @@ int main(int argc, char *argv[])
                 break;
             case MB_RECOVERABLE_FAULT:
                 printw("MB reports a possibly recoverable fault! ");
+                mvprintw(4, 5, "Press R to send MB RESET command.");
                 break;
         }
 
@@ -231,25 +235,25 @@ int main(int argc, char *argv[])
 
         sf.print(vector_stream);
         vector_stream.getline(out_str, 128);
-        mvprintw(5, 5, "Input acceleration:    %s", out_str);
+        mvprintw(6, 5, "Input acceleration:     %s", out_str);
 
         angv.print(vector_stream);
         vector_stream.getline(out_str, 128);
-        mvprintw(6, 5, "Input angular velocity: %s", out_str);
+        mvprintw(7, 5, "Input angular velocity: %s", out_str);
 
         att.print(vector_stream);
         vector_stream.getline(out_str, 128);
-        mvprintw(7, 5, "Input attitude        : %s", out_str);
+        mvprintw(8, 5, "Input attitude:         %s", out_str);
 
         pos.print(vector_stream);
         vector_stream.getline(out_str, 128);
-        mvprintw(9, 5, "Output position:        %s", out_str);
+        mvprintw(10, 5, "Output position:        %s", out_str);
 
         rot.print(vector_stream);
         vector_stream.getline(out_str, 128);
-        mvprintw(10, 5, "Output angles:          %s", out_str);
+        mvprintw(11, 5, "Output angles:          %s", out_str);
 
-        mvprintw(14, 5, "Send clock ticks: %d", motion_base.get_ticks());
+        mvprintw(15, 5, "Send clock ticks: %d", motion_base.get_ticks());
 
         refresh();
 
@@ -257,19 +261,34 @@ int main(int argc, char *argv[])
         flushinp();
         if (consoleInput != ERR)
         {
+            iface_status status = motion_base.get_iface_status();
             switch (consoleInput)
             {
                 case 'e':
                 case 'E':
-                    motion_base.setEngage();
+                    if (status == WAIT_FOR_ENGAGE)
+                    {
+                        motion_base.setEngage();
+                    }
                     break;
                 case 'r':
                 case 'R':
-                    motion_base.setReady();
+                    if (status == WAIT_FOR_READY)
+                    {
+                        motion_base.setReady();
+                    }
+                    else if (status == MB_RECOVERABLE_FAULT)
+                    {
+                        motion_base.setReset();
+                    }
                     break;
                 case 'o':
                 case 'O':
-                    motion_base.setOverride();
+                    // This option is somewhat dangerous and shouldn't be necessary 
+                    // at this point in time.
+                    // It manually skips ahead to the "next" state
+                    //
+                    //motion_base.setOverride();
                     break;
                 case 'p':
                 case 'P':
@@ -277,8 +296,7 @@ int main(int argc, char *argv[])
                     break;
                 case 'q':
                 case 'Q':
-                case '.':
-                    iface_status status = motion_base.get_iface_status();
+                case '.':   //Allows for emergency stop using Logitech presentation remotes
                     if ((status == ENGAGING) ||  (status == WAIT_FOR_READY)
                         || (status == ENGAGED) || (status == RATE_LIMITED)
                         || (status == PARKING))

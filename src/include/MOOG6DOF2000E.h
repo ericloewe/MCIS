@@ -37,7 +37,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* MB sample rate in Hz */
 #define MB_SAMPLE_RATE 60
 
-/* Time needed to engage, based on observation, in seconds */
+/* 
+    Time needed to engage, based on observation, in seconds 
+    Moog quotes a shorter timeout period. It was insufficient.
+*/
 #define MB_ENGAGE_TIME 11
 /* Engage timeout, to allow the MB to engage, in seconds */
 #define MB_ENGAGE_TIMEOUT_SECONDS 20
