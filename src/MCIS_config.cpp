@@ -61,7 +61,7 @@ MCISconfig::MCISconfig(std::string filename)
 /*
  *  load a config file into this object
  */
-void MCISconfig::load(std::string filename)
+void MCISconfig::load(const std::string& filename)
 {
     uint8_t buffer[sizeof(MCISconfig)];
 
@@ -80,8 +80,7 @@ void MCISconfig::load(std::string filename)
     int bytes = fread((void *)&buffer, 1, sizeof(MCISconfig), infileFD);
     if (bytes != sizeof(MCISconfig))
     {
-        std::runtime_error except(
-            "Failed to read all of the MDA config file! It may be truncated...\n");
+        badLengthException except(sizeof(MCISconfig), bytes);
         throw except;
     }
     fclose(infileFD);
@@ -93,8 +92,7 @@ void MCISconfig::load(std::string filename)
     storedCRC = ntohl(storedCRC);   //Handle endianness if necessary
     if (storedCRC != inFileCRC)
     {
-        std::runtime_error except(
-            "MDA config file has invalid CRC32!\n");
+        badCRCException except(storedCRC, inFileCRC);
         throw except;
     }
 
@@ -104,9 +102,27 @@ void MCISconfig::load(std::string filename)
     memcpy((void *)fileHeader, (void *)(buffer), 16);
     if (strncasecmp(fileHeader, "MCIS v05 CONFIG ", 16) != 0)
     {
-        std::runtime_error except(
-            "Unsupported config file version, must be v05 (or bad header)\n");
-        throw except;
+        switch (fileHeader[7])
+        {
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            {
+                //These are all old, little-endian versions
+                //that are no longer supported.
+                littleEndianConfigException except(
+                    "MDA config uses old little-endian format. v05 is required.\n");
+                throw except;
+            }
+            default:
+            {
+                unsupportedConfigTypeException except(
+                    "Unknown MDA config format or invalid header.\n");
+                throw except;
+            }
+        }
     }
 
     //Now we can read all the stuff in.
@@ -330,3 +346,15 @@ void discreteBiquadSectionParams::print(std::ostream& dest)
     dest << "a0, a1, a2:  " << 1.0 << "   " << a1  << "   " << a2 << std::endl;
     dest << "Gain:  " << gain << std::endl;
 }
+
+badCRCException::badCRCException(uint32_t storedCRC, uint32_t computedCRC) :
+    std::runtime_error("Bad CRC\n"),
+    stored{storedCRC},
+    computed{computedCRC}
+{}
+
+badLengthException::badLengthException(unsigned int expectedLen, unsigned int readLen) :
+    std::length_error("Bad length\n"),
+    expected{expectedLen},
+    read{readLen}
+{}

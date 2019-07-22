@@ -236,7 +236,7 @@ class MCISconfig
     MCISconfig();
     MCISconfig(std::string filename);
 
-    void load(std::string filename);
+    void load(const std::string& filename);
 
     void print(std::ostream& destination);
 
@@ -250,3 +250,35 @@ class MCISconfig
 void loadContinuousFiltParams(continuousFiltParams *filt, continuousFiltParams *inbuf);
 void loadDiscreteFiltParams(discreteFiltParams *filt,  discreteFiltParams *inbuf);
 void loadDiscreteBiquadParams(discreteBiquadSectionParams *sect, discreteBiquadSectionParams *inbuf);
+
+// Custom exceptions to signal specific errors when loading config files:
+class unsupportedConfigTypeException : public std::runtime_error
+{
+    public:    
+    using std::runtime_error::runtime_error;
+};
+
+class oldConfigTypeException : public unsupportedConfigTypeException
+{
+    public:
+    using unsupportedConfigTypeException::unsupportedConfigTypeException;
+};
+
+class littleEndianConfigException : public oldConfigTypeException
+{
+    public:
+    using oldConfigTypeException::oldConfigTypeException;
+};
+class badCRCException : public std::runtime_error
+{
+    public:    
+    badCRCException(uint32_t storedCRC, uint32_t computedCRC);
+    uint32_t stored, computed;
+};
+class badLengthException : public std::length_error
+{
+    public:    
+    badLengthException(unsigned int expectedLen, unsigned int readLen);
+    unsigned int expected, read;
+};
+

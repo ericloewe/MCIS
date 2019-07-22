@@ -39,7 +39,7 @@ target_link_libraries(MCIS_MB_interface MCIS_discreteMath MCIS_util -pthread)
 
 add_executable(MCIS ${PROJECT_SOURCE_DIR}/MCIS.cpp)
 target_link_libraries(MCIS MCIS_config MCIS_MB_interface)
-target_link_libraries(MCIS -lncurses)
+target_link_libraries(MCIS -lncurses -lconfig++)
 target_compile_features(MCIS PUBLIC cxx_std_11)
 target_compile_options(MCIS PUBLIC -Wall -Wextra -pedantic)
 
