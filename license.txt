@@ -1,4 +1,4 @@
-Copyright (c) 2018, Eric Loewenthal
+Copyright (c) 2018-2019, Eric Loewenthal
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

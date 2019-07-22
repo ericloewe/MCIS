@@ -1,0 +1,11 @@
+MCIS has the following dependencies:
+
+    ncurses
+    libconfig
+
+Additionally, to build MCIS, the following packages are needed:
+
+    cmake (Version 3.9 or newer)
+
+MCIS has been tested on Ubuntu 18.04 GNU/Linux with the 
+gcc and llvm toolchains, as well as FreeBSD 12 with the llvm toolchain. 
