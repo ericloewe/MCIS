@@ -249,11 +249,14 @@ void mbinterface::mb_send_func()
             }
 
             //Handle MB faults
-            if (MB_state_reply == MB_STATE_FAULT1 || 
-                MB_state_reply == MB_STATE_FAULT2 ||
+            if (MB_state_reply == MB_STATE_FAULT1 ||
                 MB_state_reply == MB_STATE_FAULT3 )
             {
                 current_status = MB_FAULT;
+            }
+            else if (MB_state_reply == MB_STATE_FAULT2)
+            {
+                current_status = MB_RECOVERABLE_FAULT;
             }
 
             //Communicate with MB
